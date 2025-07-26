@@ -12,9 +12,11 @@
   
   # 3️⃣ Copy the bits that can change frequently
   COPY . .
+  COPY .env .env
   
   # 4️⃣ Generate Prisma client & compile your app
-  RUN npx prisma generate --schema=prisma/scmorder.prisma && \
+  RUN mkdir -p generated/scmorder generated/scmbasic generated/procurement && \
+    npx prisma generate --schema=prisma/scmorder.prisma && \
     npx prisma generate --schema=prisma/scmbasic.prisma && \
     npx prisma generate --schema=prisma/procurement.prisma && \
     npm run build
