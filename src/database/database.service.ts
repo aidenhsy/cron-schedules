@@ -1,7 +1,7 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
-import { PrismaClient as ProcurementClient } from 'generated/procurement';
-import { PrismaClient as OrderClient } from 'generated/scmorder';
-import { PrismaClient as BasicClient } from 'generated/scmbasic';
+import { PrismaClient as ProcurementClient } from '@prisma/procurement';
+import { PrismaClient as OrderClient } from '@prisma/scmorder';
+import { PrismaClient as BasicClient } from '@prisma/scmbasic';
 
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {

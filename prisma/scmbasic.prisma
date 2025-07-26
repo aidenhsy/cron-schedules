@@ -1,6 +1,6 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/scmbasic"
+  output   = "node_modules/@prisma/scmbasic"
 }
 
 datasource db {
