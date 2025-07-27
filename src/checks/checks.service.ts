@@ -1,15 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { getCurrentVersion } from '@saihu/common';
 import { DatabaseService } from 'src/database/database.service';
 
 @Injectable()
 export class ChecksService {
-  private readonly logger = new Logger(
-    `${ChecksService.name}-checkDifferentOrders`,
-  );
+  private readonly logger = new Logger(`${ChecksService.name}`);
   constructor(private readonly databaseService: DatabaseService) {}
 
-  @Cron('42 8 * * *', {
+  @Cron('00 22 * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async checkDifferentOrders() {
@@ -47,6 +46,85 @@ export class ChecksService {
         `Missing procurement orders: ${missingProcurementOrders.length}`,
         missingProcurementOrders.map((order) => order.client_order_id),
       );
+    }
+  }
+
+  @Cron('42 11 * * *', {
+    timeZone: 'Asia/Shanghai',
+  })
+  async checkPricings() {
+    this.logger.log(`Checking pricings for version ${getCurrentVersion()}`);
+    const currentVersion = getCurrentVersion();
+    const goods = await this.databaseService.basic.scm_goods.findMany();
+
+    for (const good of goods) {
+      const pricing = await this.databaseService.pricing.scm_goods.findFirst({
+        where: {
+          id: good.id,
+        },
+      });
+      if (!pricing) {
+        console.log(`${good.id} ${good.name} not found`);
+      }
+
+      if (Number(good.price) !== Number(pricing?.price)) {
+        console.log(
+          `${good.id} ${good.name} ${good.price} ${pricing?.price} not good price `,
+        );
+      }
+
+      const pricings =
+        await this.databaseService.pricing.scm_good_pricing.findMany({
+          where: {
+            goods_id: good.id,
+            version: currentVersion,
+          },
+        });
+
+      for (const item of pricings) {
+        if (item.pricing_strategy === 'margin') {
+          const correctPrice =
+            Math.round(
+              Number(good.price) * (1 + Number(item.profit_margin) / 100) * 100,
+            ) / 100;
+
+          if (Number(correctPrice) !== Number(item.sale_price)) {
+            console.log(
+              `${good.id} ${good.name} ${correctPrice} ${item.sale_price} not margin price equal`,
+            );
+          }
+        }
+      }
+    }
+  }
+
+  @Cron('50 11 * * *', {
+    timeZone: 'Asia/Shanghai',
+  })
+  async checkImScmSyncPricings() {
+    this.logger.log(
+      `Checking im scm sync pricings for version ${getCurrentVersion()}`,
+    );
+    const supplierGoods =
+      await this.databaseService.procurement.supplier_items.findMany();
+
+    for (const good of supplierGoods) {
+      const goodPrice =
+        await this.databaseService.pricing.scm_good_pricing.findFirst({
+          where: {
+            external_reference_id: good.supplier_reference_id,
+          },
+        });
+
+      if (!goodPrice) {
+        console.log(`${good.supplier_reference_id} not found`);
+      }
+
+      if (Number(good.price) !== Number(goodPrice?.sale_price)) {
+        console.log(
+          `${good.supplier_reference_id} ${good.price} ${goodPrice?.sale_price} not equal`,
+        );
+      }
     }
   }
 }
