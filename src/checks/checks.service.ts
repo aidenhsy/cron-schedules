@@ -9,7 +9,7 @@ export class ChecksService {
   );
   constructor(private readonly databaseService: DatabaseService) {}
 
-  @Cron('50 5 * * *', {
+  @Cron('30 8 * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async checkDifferentOrders() {
