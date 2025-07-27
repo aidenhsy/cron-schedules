@@ -9,7 +9,7 @@ export class ChecksService {
   );
   constructor(private readonly databaseService: DatabaseService) {}
 
-  @Cron('30 8 * * *', {
+  @Cron('42 8 * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async checkDifferentOrders() {
@@ -22,27 +22,30 @@ export class ChecksService {
 
     const missingScmOrders = procurementOrders.filter(
       (procurementOrder) =>
-        !scmOrders.some((scmOrder) => scmOrder.id === procurementOrder.id),
+        !scmOrders.some(
+          (scmOrder) => scmOrder.client_order_id === procurementOrder.id,
+        ),
     );
 
     const missingProcurementOrders = scmOrders.filter(
       (scmOrder) =>
         !procurementOrders.some(
-          (procurementOrder) => procurementOrder.id === scmOrder.id,
+          (procurementOrder) =>
+            procurementOrder.id === scmOrder.client_order_id,
         ),
     );
 
     if (missingScmOrders.length > 0) {
       this.logger.warn(
         `Missing SCM orders: ${missingScmOrders.length}`,
-        missingScmOrders,
+        missingScmOrders.map((order) => order.client_order_id),
       );
     }
 
     if (missingProcurementOrders.length > 0) {
       this.logger.warn(
         `Missing procurement orders: ${missingProcurementOrders.length}`,
-        missingProcurementOrders,
+        missingProcurementOrders.map((order) => order.id),
       );
     }
   }

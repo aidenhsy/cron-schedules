@@ -1,0 +1,19 @@
+image: atlassian/default-image:3
+
+pipelines:
+  branches:
+    main:
+      - step:
+          name: main 分支部署
+          script:
+            - pipe: atlassian/ssh-run:0.4.0
+              variables:
+                SSH_USER: 'dev'
+                SERVER: '47.76.166.234'
+                COMMAND: |
+                  cd /var/www/scheduled-checks && \
+                  git checkout main && \
+                  git pull origin main && \
+                  sudo docker compose up -d --build && \
+                  sudo docker system prune -f
+                MODE: 'command'
