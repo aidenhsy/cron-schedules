@@ -38,14 +38,14 @@ export class ChecksService {
     if (missingScmOrders.length > 0) {
       this.logger.warn(
         `Missing SCM orders: ${missingScmOrders.length}`,
-        missingScmOrders.map((order) => order.client_order_id),
+        missingScmOrders.map((order) => order.id),
       );
     }
 
     if (missingProcurementOrders.length > 0) {
       this.logger.warn(
         `Missing procurement orders: ${missingProcurementOrders.length}`,
-        missingProcurementOrders.map((order) => order.id),
+        missingProcurementOrders.map((order) => order.client_order_id),
       );
     }
   }
