@@ -7,7 +7,7 @@
   COPY package*.json ./
   
   # 2️⃣ Install production deps
-  RUN npm ci
+  RUN npm install
   
   # 3️⃣ Copy Prisma files and .env (required for schema generation)
   COPY .env .env
