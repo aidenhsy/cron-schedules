@@ -134,7 +134,7 @@ export class ChecksService {
     this.logger.log('Checking im scm sync pricings done');
   }
 
-  @Cron('00 13 * * *', {
+  @Cron('0 * * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async checkDeliveryQty() {
@@ -210,6 +210,16 @@ export class ChecksService {
             Number(procurementDetail.actual_delivery_qty) !==
             Number(orderDetail.deliver_qty)
           ) {
+            await this.databaseService.procurement.supplier_order_details.update(
+              {
+                where: {
+                  id: procurementDetail.id,
+                },
+                data: {
+                  actual_delivery_qty: orderDetail.deliver_qty,
+                },
+              },
+            );
             console.log(
               `${orderDetail.reference_id} difference ${procurementDetail.actual_delivery_qty} ${orderDetail.deliver_qty} \n id: ${order.client_order_id} \n `,
             );
