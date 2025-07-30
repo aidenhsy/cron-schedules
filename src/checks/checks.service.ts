@@ -151,6 +151,7 @@ export class ChecksService {
             client_order_id: true,
             procurement_order_details: {
               select: {
+                id: true,
                 reference_id: true,
                 deliver_qty: true,
               },
@@ -198,6 +199,7 @@ export class ChecksService {
         }
 
         for (const orderDetail of order.procurement_order_details) {
+          // get procurement detail
           const procurementDetail =
             procurementOrder.supplier_order_details.find(
               (d) => d.supplier_reference_id === orderDetail.reference_id,
@@ -206,6 +208,54 @@ export class ChecksService {
             console.log(`${orderDetail.reference_id} not found`);
             continue;
           }
+
+          // get scm order detail
+          const basicDetail =
+            await this.databaseService.basic.scm_order_details.findFirst({
+              where: {
+                reference_order_id: order.client_order_id,
+                reference_id: orderDetail.reference_id,
+              },
+            });
+
+          if (basicDetail) {
+            if (
+              Number(basicDetail.deliver_goods_qty) !==
+              Number(orderDetail.deliver_qty)
+            ) {
+              await this.databaseService.order.procurement_order_details.update(
+                {
+                  where: {
+                    id: orderDetail.id,
+                  },
+                  data: {
+                    deliver_qty: basicDetail.deliver_goods_qty,
+                  },
+                },
+              );
+              console.log(
+                `[delivery qty] ${orderDetail.reference_id} scm-order difference ${basicDetail.deliver_goods_qty} ${orderDetail.deliver_qty} \n id: ${order.client_order_id} \n `,
+              );
+              console.log('-----------');
+            }
+            if (
+              Number(procurementDetail.actual_delivery_qty) !==
+              Number(basicDetail.deliver_goods_qty)
+            ) {
+              await this.databaseService.procurement.supplier_order_details.update(
+                {
+                  where: {
+                    id: procurementDetail.id,
+                  },
+                  data: {
+                    actual_delivery_qty: basicDetail.deliver_goods_qty,
+                  },
+                },
+              );
+            }
+          }
+
+          // if basic detail not found, update procurement detail
           if (
             Number(procurementDetail.actual_delivery_qty) !==
             Number(orderDetail.deliver_qty)
@@ -221,7 +271,7 @@ export class ChecksService {
               },
             );
             console.log(
-              `${orderDetail.reference_id} difference ${procurementDetail.actual_delivery_qty} ${orderDetail.deliver_qty} \n id: ${order.client_order_id} \n `,
+              `[delivery qty] ${orderDetail.reference_id} procurement-order difference ${procurementDetail.actual_delivery_qty} ${orderDetail.deliver_qty} \n id: ${order.client_order_id} \n `,
             );
             console.log('-----------');
           }
@@ -238,8 +288,238 @@ export class ChecksService {
   @Cron('5 * * * *', {
     timeZone: 'Asia/Shanghai',
   })
-  async checkReceiptQty() {
-    this.logger.log('Checking delivery qty');
+  async checkReceiveQty() {
+    this.logger.log('Checking receive qty');
+
+    const batchSize = 100;
+    let skip = 0;
+    let hasMoreOrders = true;
+
+    while (hasMoreOrders) {
+      const orders =
+        await this.databaseService.order.procurement_orders.findMany({
+          select: {
+            client_order_id: true,
+            procurement_order_details: {
+              select: {
+                reference_id: true,
+                customer_receive_qty: true,
+                id: true,
+              },
+            },
+          },
+          take: batchSize,
+          skip: skip,
+        });
+
+      if (orders.length < batchSize) {
+        hasMoreOrders = false;
+      }
+
+      if (orders.length === 0) {
+        break;
+      }
+
+      const procurementOrders =
+        await this.databaseService.procurement.supplier_orders.findMany({
+          where: {
+            id: {
+              in: orders.map((order) => order.client_order_id),
+            },
+          },
+          select: {
+            id: true,
+            supplier_order_details: {
+              select: {
+                id: true,
+                supplier_reference_id: true,
+                confirm_delivery_qty: true,
+              },
+            },
+          },
+        });
+
+      for (const order of orders) {
+        const procurementOrder = procurementOrders.find(
+          (o) => o.id === order.client_order_id,
+        );
+
+        if (!procurementOrder) {
+          console.log(`${order.client_order_id} not found`);
+          continue;
+        }
+
+        for (const orderDetail of order.procurement_order_details) {
+          const procurementDetail =
+            procurementOrder.supplier_order_details.find(
+              (d) => d.supplier_reference_id === orderDetail.reference_id,
+            );
+          if (!procurementDetail) {
+            console.log(`${orderDetail.reference_id} not found`);
+            continue;
+          }
+          if (
+            Number(procurementDetail.confirm_delivery_qty) !==
+            Number(orderDetail.customer_receive_qty)
+          ) {
+            await this.databaseService.order.procurement_order_details.update({
+              where: {
+                id: orderDetail.id,
+              },
+              data: {
+                customer_receive_qty: procurementDetail.confirm_delivery_qty,
+              },
+            });
+            console.log(
+              `[receive qty] ${orderDetail.reference_id} difference ${procurementDetail.confirm_delivery_qty} ${orderDetail.customer_receive_qty} \n id: ${order.client_order_id} \n `,
+            );
+            console.log('-----------');
+          }
+        }
+      }
+
+      // Move to the next batch
+      skip += batchSize;
+    }
+
+    this.logger.log('Checking receive qty done');
+  }
+
+  @Cron('10 * * * *', {
+    timeZone: 'Asia/Shanghai',
+  })
+  async checkFinalQty() {
+    this.logger.log('Checking final qty');
+
+    const batchSize = 100;
+    let skip = 0;
+    let hasMoreOrders = true;
+
+    while (hasMoreOrders) {
+      const orders =
+        await this.databaseService.order.procurement_orders.findMany({
+          select: {
+            client_order_id: true,
+            procurement_order_details: {
+              select: {
+                reference_id: true,
+                final_qty: true,
+                id: true,
+              },
+            },
+          },
+          take: batchSize,
+          skip: skip,
+        });
+
+      if (orders.length < batchSize) {
+        hasMoreOrders = false;
+      }
+
+      if (orders.length === 0) {
+        break;
+      }
+
+      const procurementOrders =
+        await this.databaseService.procurement.supplier_orders.findMany({
+          where: {
+            id: {
+              in: orders.map((order) => order.client_order_id),
+            },
+          },
+          select: {
+            id: true,
+            supplier_order_details: {
+              select: {
+                id: true,
+                supplier_reference_id: true,
+                final_qty: true,
+              },
+            },
+          },
+        });
+
+      for (const order of orders) {
+        const procurementOrder = procurementOrders.find(
+          (o) => o.id === order.client_order_id,
+        );
+
+        if (!procurementOrder) {
+          console.log(`${order.client_order_id} not found`);
+          continue;
+        }
+
+        for (const orderDetail of order.procurement_order_details) {
+          const procurementDetail =
+            procurementOrder.supplier_order_details.find(
+              (d) => d.supplier_reference_id === orderDetail.reference_id,
+            );
+          if (!procurementDetail) {
+            console.log(`${orderDetail.reference_id} not found`);
+            continue;
+          }
+          if (
+            Number(procurementDetail.final_qty) !==
+            Number(orderDetail.final_qty)
+          ) {
+            await this.databaseService.procurement.supplier_order_details.update(
+              {
+                where: {
+                  id: procurementDetail.id,
+                },
+                data: {
+                  final_qty: orderDetail.final_qty,
+                },
+              },
+            );
+            console.log(
+              `[final qty] ${orderDetail.reference_id} difference ${procurementDetail.final_qty} ${orderDetail.final_qty} \n id: ${order.client_order_id} \n `,
+            );
+            console.log('-----------');
+          }
+
+          const basicDetail =
+            await this.databaseService.basic.scm_order_details.findFirst({
+              where: {
+                reference_order_id: order.client_order_id,
+                reference_id: orderDetail.reference_id,
+              },
+            });
+          if (!basicDetail) {
+            continue;
+          }
+
+          if (
+            Number(basicDetail.delivery_qty) !== Number(orderDetail.final_qty)
+          ) {
+            await this.databaseService.basic.scm_order_details.update({
+              where: {
+                id: basicDetail.id,
+              },
+              data: {
+                delivery_qty: orderDetail.final_qty,
+              },
+            });
+            console.log(
+              `[final qty] ${orderDetail.reference_id} scm-order difference ${basicDetail.delivery_qty} ${orderDetail.final_qty} \n id: ${order.client_order_id} \n `,
+            );
+            console.log('-----------');
+          }
+        }
+      }
+
+      // Move to the next batch
+      skip += batchSize;
+    }
+
+    this.logger.log('Checking final qty done');
+  }
+
+  @Cron('0 * * * *', {
+    timeZone: 'Asia/Shanghai',
+  })
+  async checkReceiveTime() {
+    this.logger.log('Checking receive time');
 
     const batchSize = 100;
     let skip = 0;
@@ -332,6 +612,6 @@ export class ChecksService {
       skip += batchSize;
     }
 
-    this.logger.log('Checking delivery qty done');
+    this.logger.log('Checking receive time done');
   }
 }
