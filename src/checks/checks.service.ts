@@ -515,11 +515,11 @@ export class ChecksService {
     this.logger.log('Checking final qty done');
   }
 
-  @Cron('0 * * * *', {
+  @Cron('15 * * * *', {
     timeZone: 'Asia/Shanghai',
   })
-  async checkReceiveTime() {
-    this.logger.log('Checking receive time');
+  async checkDeliveryTime() {
+    this.logger.log('Checking final qty');
 
     const batchSize = 100;
     let skip = 0;
@@ -529,11 +529,12 @@ export class ChecksService {
       const orders =
         await this.databaseService.order.procurement_orders.findMany({
           select: {
+            id: true,
             client_order_id: true,
+            delivery_time: true,
             procurement_order_details: {
               select: {
                 reference_id: true,
-                customer_receive_qty: true,
                 id: true,
               },
             },
@@ -559,13 +560,7 @@ export class ChecksService {
           },
           select: {
             id: true,
-            supplier_order_details: {
-              select: {
-                id: true,
-                supplier_reference_id: true,
-                confirm_delivery_qty: true,
-              },
-            },
+            delivery_time: true,
           },
         });
 
@@ -579,33 +574,140 @@ export class ChecksService {
           continue;
         }
 
+        let delivery_time: Date | undefined = undefined;
         for (const orderDetail of order.procurement_order_details) {
-          const procurementDetail =
-            procurementOrder.supplier_order_details.find(
-              (d) => d.supplier_reference_id === orderDetail.reference_id,
-            );
-          if (!procurementDetail) {
-            console.log(`${orderDetail.reference_id} not found`);
-            continue;
-          }
-          if (
-            Number(procurementDetail.confirm_delivery_qty) !==
-            Number(orderDetail.customer_receive_qty)
-          ) {
-            await this.databaseService.order.procurement_order_details.update({
+          const basicDetail =
+            await this.databaseService.basic.scm_order_details.findFirst({
               where: {
-                id: orderDetail.id,
-              },
-              data: {
-                customer_receive_qty: procurementDetail.confirm_delivery_qty,
+                reference_order_id: order.client_order_id,
+                reference_id: orderDetail.reference_id,
               },
             });
-            console.log(
-              `${orderDetail.reference_id} difference ${procurementDetail.confirm_delivery_qty} ${orderDetail.customer_receive_qty} \n id: ${order.client_order_id} \n `,
-            );
-            console.log('-----------');
+          if (!basicDetail) {
+            continue;
+          }
+          if (basicDetail.delivery_time) {
+            delivery_time = basicDetail.delivery_time;
           }
         }
+
+        if (delivery_time) {
+          // update scm order
+          await this.databaseService.order.procurement_orders.update({
+            where: {
+              id: order.id,
+            },
+            data: {
+              sent_time: delivery_time,
+              delivery_time: delivery_time,
+            },
+          });
+          // update procurement
+          await this.databaseService.procurement.supplier_orders.update({
+            where: {
+              id: procurementOrder.id,
+            },
+            data: {
+              sent_time: delivery_time,
+              delivery_time: delivery_time,
+            },
+          });
+        }
+      }
+
+      // Move to the next batch
+      skip += batchSize;
+    }
+
+    this.logger.log('Checking final qty done');
+  }
+
+  @Cron('25 * * * *', {
+    timeZone: 'Asia/Shanghai',
+  })
+  async checkReceiveTime() {
+    this.logger.log('Checking receive time');
+
+    const batchSize = 100;
+    let skip = 0;
+    let hasMoreOrders = true;
+
+    while (hasMoreOrders) {
+      const orders =
+        await this.databaseService.procurement.supplier_orders.findMany({
+          where: {
+            status: {
+              in: [4, 5, 20],
+            },
+          },
+          select: {
+            id: true,
+            receive_time: true,
+            delivery_time: true,
+          },
+          take: batchSize,
+          skip: skip,
+        });
+
+      if (orders.length < batchSize) {
+        hasMoreOrders = false;
+      }
+
+      if (orders.length === 0) {
+        break;
+      }
+
+      const procurementOrders =
+        await this.databaseService.order.procurement_orders.findMany({
+          where: {
+            client_order_id: {
+              in: orders.map((order) => order.id),
+            },
+          },
+          select: {
+            id: true,
+            client_order_id: true,
+          },
+        });
+
+      for (const order of orders) {
+        const procurementOrder = procurementOrders.find(
+          (o) => o.client_order_id === order.id,
+        );
+
+        if (!procurementOrder) {
+          console.log(`${order.id} not found`);
+          continue;
+        }
+
+        if (order.receive_time === null) {
+          await this.databaseService.procurement.supplier_orders.update({
+            where: {
+              id: order.id,
+            },
+            data: {
+              receive_time: order.delivery_time,
+            },
+          });
+          await this.databaseService.order.procurement_orders.update({
+            where: {
+              id: procurementOrder.id,
+            },
+            data: {
+              customer_receive_time: order.delivery_time,
+            },
+          });
+          continue;
+        }
+
+        await this.databaseService.order.procurement_orders.update({
+          where: {
+            id: procurementOrder.id,
+          },
+          data: {
+            customer_receive_time: order.receive_time,
+          },
+        });
       }
 
       // Move to the next batch
