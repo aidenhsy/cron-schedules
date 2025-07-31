@@ -716,4 +716,101 @@ export class ChecksService {
 
     this.logger.log('Checking receive time done');
   }
+
+  @Cron('30 * * * *', {
+    timeZone: 'Asia/Shanghai',
+  })
+  async checkCalculatedAmount() {
+    this.logger.log('Checking calculated amount');
+
+    const batchSize = 100;
+    let skip = 0;
+    let hasMoreOrders = true;
+
+    while (hasMoreOrders) {
+      const scmOorders =
+        await this.databaseService.order.procurement_orders.findMany({
+          include: {
+            procurement_order_details: true,
+          },
+        });
+
+      if (scmOorders.length < batchSize) {
+        hasMoreOrders = false;
+      }
+
+      if (scmOorders.length === 0) {
+        break;
+      }
+
+      const imOrders =
+        await this.databaseService.procurement.supplier_orders.findMany({
+          where: {
+            id: {
+              in: scmOorders.map((order) => order.client_order_id),
+            },
+          },
+        });
+
+      for (const scmOrder of scmOorders) {
+        const imOrder = imOrders.find((o) => o.id === scmOrder.client_order_id);
+
+        if (!imOrder) {
+          console.log(`${scmOrder.client_order_id} not found`);
+          continue;
+        }
+
+        const orderTotal = scmOrder.procurement_order_details.reduce(
+          (acc, detail) =>
+            acc + Number(detail.order_qty) * Number(detail.price),
+          0,
+        );
+        const roundedOrderTotal = Math.round(orderTotal * 100) / 100;
+
+        if (Number(roundedOrderTotal) !== Number(imOrder.order_amount)) {
+          console.log(
+            `[calculated amount] ${scmOrder.client_order_id} order amount difference ${roundedOrderTotal} ${imOrder.order_amount}`,
+          );
+          console.log('-----------');
+          await this.databaseService.procurement.supplier_orders.update({
+            where: {
+              id: imOrder.id,
+            },
+            data: {
+              order_amount: roundedOrderTotal,
+            },
+          });
+          await this.databaseService.order.procurement_orders.update({
+            where: {
+              id: scmOrder.id,
+            },
+            data: {
+              order_amount: roundedOrderTotal,
+            },
+          });
+          continue;
+        }
+
+        if (Number(imOrder.order_amount) !== Number(scmOrder.order_amount)) {
+          console.log(
+            `[calculated amount] ${scmOrder.client_order_id} order amount for order and procurment difference ${imOrder.order_amount} ${scmOrder.order_amount}`,
+          );
+          console.log('-----------');
+          await this.databaseService.order.procurement_orders.update({
+            where: {
+              id: scmOrder.id,
+            },
+            data: {
+              order_amount: imOrder.order_amount,
+            },
+          });
+        }
+      }
+
+      // Move to the next batch
+      skip += batchSize;
+    }
+
+    this.logger.log('Checking calculated amount done');
+  }
 }
