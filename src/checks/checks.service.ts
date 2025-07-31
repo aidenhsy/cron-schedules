@@ -813,4 +813,106 @@ export class ChecksService {
 
     this.logger.log('Checking calculated amount done');
   }
+
+  @Cron('35 * * * *', {
+    timeZone: 'Asia/Shanghai',
+  })
+  async checkFinalAmount() {
+    this.logger.log('Checking final amount');
+
+    const batchSize = 100;
+    let skip = 0;
+    let hasMoreOrders = true;
+
+    while (hasMoreOrders) {
+      const scmOorders =
+        await this.databaseService.order.procurement_orders.findMany({
+          include: {
+            procurement_order_details: true,
+          },
+          where: {
+            status: {
+              in: [4, 5],
+            },
+          },
+        });
+
+      if (scmOorders.length < batchSize) {
+        hasMoreOrders = false;
+      }
+
+      if (scmOorders.length === 0) {
+        break;
+      }
+
+      const imOrders =
+        await this.databaseService.procurement.supplier_orders.findMany({
+          where: {
+            id: {
+              in: scmOorders.map((order) => order.client_order_id),
+            },
+          },
+        });
+
+      for (const scmOrder of scmOorders) {
+        const imOrder = imOrders.find((o) => o.id === scmOrder.client_order_id);
+
+        if (!imOrder) {
+          console.log(`${scmOrder.client_order_id} not found`);
+          continue;
+        }
+
+        const finalTotal = scmOrder.procurement_order_details.reduce(
+          (acc, detail) =>
+            acc + Number(detail.final_qty) * Number(detail.price),
+          0,
+        );
+        const roundedFinalTotal = Math.round(finalTotal * 100) / 100;
+
+        if (Number(roundedFinalTotal) !== Number(imOrder.actual_amount)) {
+          console.log(
+            `[calculated final amount] ${scmOrder.client_order_id} final amount difference ${roundedFinalTotal} ${imOrder.order_amount}`,
+          );
+          console.log('-----------');
+          await this.databaseService.procurement.supplier_orders.update({
+            where: {
+              id: imOrder.id,
+            },
+            data: {
+              actual_amount: roundedFinalTotal,
+            },
+          });
+          await this.databaseService.order.procurement_orders.update({
+            where: {
+              id: scmOrder.id,
+            },
+            data: {
+              actual_amount: roundedFinalTotal,
+            },
+          });
+          continue;
+        }
+
+        if (Number(imOrder.actual_amount) !== Number(scmOrder.actual_amount)) {
+          console.log(
+            `[calculated amount] ${scmOrder.client_order_id} order amount for order and procurment difference ${imOrder.order_amount} ${scmOrder.order_amount}`,
+          );
+          console.log('-----------');
+          await this.databaseService.order.procurement_orders.update({
+            where: {
+              id: scmOrder.id,
+            },
+            data: {
+              actual_amount: imOrder.actual_amount,
+            },
+          });
+        }
+      }
+
+      // Move to the next batch
+      skip += batchSize;
+    }
+
+    this.logger.log('Checking calculated actual amount done');
+  }
 }
