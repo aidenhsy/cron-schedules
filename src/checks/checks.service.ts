@@ -398,6 +398,11 @@ export class ChecksService {
     while (hasMoreOrders) {
       const orders =
         await this.databaseService.order.procurement_orders.findMany({
+          where: {
+            status: {
+              in: [4, 5],
+            },
+          },
           select: {
             client_order_id: true,
             procurement_order_details: {
