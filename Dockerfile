@@ -18,7 +18,8 @@
       npx prisma generate --schema=prisma/scmorder.prisma && \
       npx prisma generate --schema=prisma/scmbasic.prisma && \
       npx prisma generate --schema=prisma/procurement.prisma && \
-      npx prisma generate --schema=prisma/scmpricing.prisma
+      npx prisma generate --schema=prisma/scmpricing.prisma && \
+      npx prisma generate --schema=prisma/iminventory.prisma
   
   # 5️⃣ Copy remaining app code and build
   COPY . .

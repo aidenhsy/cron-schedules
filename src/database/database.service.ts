@@ -3,6 +3,7 @@ import { PrismaClient as ProcurementClient } from '@prisma/procurement';
 import { PrismaClient as OrderClient } from '@prisma/scmorder';
 import { PrismaClient as BasicClient } from '@prisma/scmbasic';
 import { PrismaClient as PricingClient } from '@prisma/scmpricing';
+import { PrismaClient as InventoryClient } from '@prisma/iminventory';
 
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
@@ -10,12 +11,14 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   order: OrderClient;
   basic: BasicClient;
   pricing: PricingClient;
+  inventory: InventoryClient;
 
   constructor() {
     this.procurement = new ProcurementClient();
     this.order = new OrderClient();
     this.basic = new BasicClient();
     this.pricing = new PricingClient();
+    this.inventory = new InventoryClient();
   }
 
   async onModuleInit() {
@@ -24,6 +27,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       this.order.$connect(),
       this.basic.$connect(),
       this.pricing.$connect(),
+      this.inventory.$connect(),
     ]);
   }
 
@@ -33,6 +37,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       this.order.$disconnect(),
       this.basic.$disconnect(),
       this.pricing.$disconnect(),
+      this.inventory.$disconnect(),
     ]);
   }
 }
