@@ -12,7 +12,7 @@ export class InventoryService {
   })
   async finalOrders() {}
 
-  @Cron('30 * * * *', {
+  @Cron('35 * * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async syncSupplierItems() {
