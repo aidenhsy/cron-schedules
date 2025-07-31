@@ -520,7 +520,7 @@ export class ChecksService {
     this.logger.log('Checking final qty done');
   }
 
-  @Cron('15 * * * *', {
+  @Cron('45 * * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async checkDeliveryTime() {
@@ -589,6 +589,10 @@ export class ChecksService {
               },
             });
           if (!basicDetail) {
+            console.log(
+              `not found \n${orderDetail.reference_id} \n ${order.client_order_id} `,
+            );
+            console.log('-----------');
             continue;
           }
           if (basicDetail.delivery_time) {
