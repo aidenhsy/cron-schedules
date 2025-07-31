@@ -520,7 +520,7 @@ export class ChecksService {
     this.logger.log('Checking final qty done');
   }
 
-  @Cron('45 * * * *', {
+  @Cron('15 * * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async checkDeliveryTime() {
@@ -930,7 +930,7 @@ export class ChecksService {
     this.logger.log('Checking calculated actual amount done');
   }
 
-  @Cron('40 * * * *', {
+  @Cron('55 * * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async checkUnreceivedOrders() {
