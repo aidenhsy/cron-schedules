@@ -587,6 +587,13 @@ export class ChecksService {
                 reference_order_id: order.client_order_id,
                 reference_id: orderDetail.reference_id,
               },
+              select: {
+                scm_order: {
+                  select: {
+                    delivery_time: true,
+                  },
+                },
+              },
             });
           if (!basicDetail) {
             console.log(
@@ -595,9 +602,7 @@ export class ChecksService {
             console.log('-----------');
             continue;
           }
-          if (basicDetail.delivery_time) {
-            delivery_time = basicDetail.delivery_time;
-          }
+          delivery_time = basicDetail.scm_order?.delivery_time;
         }
 
         if (delivery_time) {
