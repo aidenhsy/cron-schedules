@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { getCurrentVersion } from '@saihu/common';
+import { getCurrentChinaTime, getCurrentVersion } from '@saihu/common';
 import { DatabaseService } from 'src/database/database.service';
 
 @Injectable()
@@ -914,5 +914,153 @@ export class ChecksService {
     }
 
     this.logger.log('Checking calculated actual amount done');
+  }
+
+  @Cron('40 * * * *', {
+    timeZone: 'Asia/Shanghai',
+  })
+  async checkUnreceivedOrders() {
+    const today = getCurrentChinaTime();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayDate = yesterday.toISOString().split('T')[0];
+    const yesterdayDateWithTime = new Date(`${yesterdayDate}T12:00:00Z`);
+
+    this.logger.log(
+      `Checking unreceived orders before ${yesterdayDateWithTime.toISOString()}`,
+    );
+
+    const imOrders =
+      await this.databaseService.procurement.supplier_orders.findMany({
+        where: {
+          status: 2,
+          delivery_time: {
+            lt: yesterdayDateWithTime,
+          },
+        },
+        include: {
+          supplier_order_details: true,
+        },
+      });
+
+    const scmOrders =
+      await this.databaseService.order.procurement_orders.findMany({
+        where: {
+          client_order_id: {
+            in: imOrders.map((order) => order.id),
+          },
+        },
+        include: {
+          procurement_order_details: true,
+        },
+      });
+
+    for (const imOrder of imOrders) {
+      const scmOrder = scmOrders.find((o) => o.client_order_id === imOrder.id);
+
+      if (!scmOrder) {
+        console.log(`${imOrder.id} not found`);
+        continue;
+      }
+
+      for (const imOrderDetail of imOrder.supplier_order_details) {
+        const scmOrderDetail = scmOrder.procurement_order_details.find(
+          (o) => o.reference_id === imOrderDetail.supplier_reference_id,
+        );
+
+        if (!scmOrderDetail) {
+          console.log(
+            `scm order detail ${imOrderDetail.supplier_reference_id} not found`,
+          );
+          continue;
+        }
+
+        const basicDetail =
+          await this.databaseService.basic.scm_order_details.findFirst({
+            where: {
+              reference_order_id: imOrder.id,
+              reference_id: imOrderDetail.supplier_reference_id,
+            },
+          });
+
+        if (!basicDetail) {
+          console.log(
+            `basic order detail ${imOrderDetail.supplier_reference_id} not found`,
+          );
+          continue;
+        }
+
+        await this.databaseService.procurement.supplier_order_details.update({
+          where: {
+            id: imOrderDetail.id,
+          },
+          data: {
+            actual_delivery_qty: basicDetail.deliver_goods_qty,
+            confirm_delivery_qty: basicDetail.deliver_goods_qty,
+            final_qty: basicDetail.deliver_goods_qty,
+          },
+        });
+
+        await this.databaseService.order.procurement_order_details.update({
+          where: {
+            id: scmOrderDetail.id,
+          },
+          data: {
+            deliver_qty: basicDetail.deliver_goods_qty,
+            customer_receive_qty: basicDetail.deliver_goods_qty,
+            final_qty: basicDetail.deliver_goods_qty,
+          },
+        });
+      }
+
+      const updatedScmOrder =
+        await this.databaseService.order.procurement_orders.findFirst({
+          where: {
+            id: scmOrder.id,
+          },
+          include: {
+            procurement_order_details: true,
+          },
+        });
+
+      const updatedImOrder =
+        await this.databaseService.procurement.supplier_orders.findFirst({
+          where: {
+            id: imOrder.id,
+          },
+          include: {
+            supplier_order_details: true,
+          },
+        });
+
+      const totalAmount = updatedScmOrder!.procurement_order_details.reduce(
+        (acc, detail) => acc + Number(detail.final_qty) * Number(detail.price),
+        0,
+      );
+
+      const roundedTotalAmount = Math.round(totalAmount * 100) / 100;
+
+      await this.databaseService.order.procurement_orders.update({
+        where: {
+          id: scmOrder.id,
+        },
+        data: {
+          actual_amount: roundedTotalAmount,
+          status: 4,
+        },
+      });
+
+      await this.databaseService.procurement.supplier_orders.update({
+        where: {
+          id: imOrder.id,
+        },
+        data: {
+          actual_amount: roundedTotalAmount,
+          status: 4,
+        },
+      });
+    }
+
+    this.logger.log('Checking unreceived orders done');
   }
 }
