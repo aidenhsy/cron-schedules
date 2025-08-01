@@ -3,7 +3,7 @@ import { PrismaClient as ProcurementClient } from '@prisma/procurement';
 import { PrismaClient as OrderClient } from '@prisma/scmorder';
 import { PrismaClient as BasicClient } from '@prisma/scmbasic';
 import { PrismaClient as PricingClient } from '@prisma/scmpricing';
-import { PrismaClient as InventoryClient } from '@prisma/iminventory';
+import { PrismaClient as InventoryClient } from '@prisma/inventory';
 
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
