@@ -14,7 +14,7 @@
   COPY prisma prisma
   
   # 4️⃣ Generate Prisma clients
-  RUN mkdir -p generated/scmorder generated/scmbasic generated/procurement && \
+  RUN mkdir -p generated/scmorder generated/scmbasic generated/procurement generated/scmpricing generated/iminventory && \
       npx prisma generate --schema=prisma/scmorder.prisma && \
       npx prisma generate --schema=prisma/scmbasic.prisma && \
       npx prisma generate --schema=prisma/procurement.prisma && \
