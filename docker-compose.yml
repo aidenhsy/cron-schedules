@@ -2,14 +2,9 @@ version: '3.8'
 
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    build: .
     ports:
       - '3030:3030'
     env_file:
       - .env
-    volumes:
-      - .:/app
-      - /app/node_modules
     restart: unless-stopped

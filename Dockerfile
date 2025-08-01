@@ -4,33 +4,20 @@
   WORKDIR /app
   
   # 1️⃣ Copy only files that affect deps
-  COPY package*.json ./
+  COPY . .
   
   # 2️⃣ Install production deps
   RUN npm install
-  
-  # 3️⃣ Copy Prisma files and .env (required for schema generation)
-  COPY .env .env
-  COPY prisma prisma
   
   # 4️⃣ Generate Prisma clients
   RUN npx prisma generate --schema=prisma/scmorder.prisma && \
       npx prisma generate --schema=prisma/scmbasic.prisma && \
       npx prisma generate --schema=prisma/procurement.prisma && \
-      npx prisma generate --schema=prisma/scmpricing.prisma
+      npx prisma generate --schema=prisma/scmpricing.prisma && \
+      npx prisma generate --schema=prisma/inventory.prisma
   
   # 5️⃣ Copy remaining app code and build
-  COPY . .
-  RUN ls -R /app/generated
   RUN npm run build
   
-  # -------- runtime stage --------
-  FROM node:22.12.0-alpine
-  
-  WORKDIR /app
-  
-  # Copy built app from builder
-  COPY --from=builder /app .
-  
-  EXPOSE 3030
+  EXPOSE 3000
   CMD ["npm", "start"]
