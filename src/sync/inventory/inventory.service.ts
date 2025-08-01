@@ -15,28 +15,5 @@ export class InventoryService {
   @Cron('35 * * * *', {
     timeZone: 'Asia/Shanghai',
   })
-  async syncSupplierItems() {
-    const procurementSupplierItems =
-      await this.databaseService.procurement.supplier_items.findMany();
-
-    const inventorySupplierItems =
-      await this.databaseService.inventory.supplier_items.findMany();
-
-    const missingInventorySupplierItems = procurementSupplierItems.filter(
-      (item) =>
-        !inventorySupplierItems.some((i) => i.supplier_id === item.supplier_id),
-    );
-
-    if (missingInventorySupplierItems.length > 0) {
-      this.logger.log(
-        `Missing inventory supplier items: ${missingInventorySupplierItems.length}`,
-      );
-
-      for (const item of missingInventorySupplierItems) {
-        await this.databaseService.inventory.supplier_items.create({
-          data: item,
-        });
-      }
-    }
-  }
+  async syncSupplierItems() {}
 }
