@@ -14,12 +14,10 @@
   COPY prisma prisma
   
   # 4️⃣ Generate Prisma clients
-  RUN mkdir -p generated/scmorder generated/scmbasic generated/procurement generated/scmpricing generated/iminventory && \
-      npx prisma generate --schema=prisma/scmorder.prisma && \
+  RUN npx prisma generate --schema=prisma/scmorder.prisma && \
       npx prisma generate --schema=prisma/scmbasic.prisma && \
       npx prisma generate --schema=prisma/procurement.prisma && \
-      npx prisma generate --schema=prisma/scmpricing.prisma && \
-      npx prisma generate --schema=prisma/iminventory.prisma
+      npx prisma generate --schema=prisma/scmpricing.prisma
   
   # 5️⃣ Copy remaining app code and build
   COPY . .
