@@ -54,7 +54,7 @@ export class InventoryService {
     this.logger.log('syncing supplierItems completed');
   }
 
-  @Cron('15 8 * * *', {
+  @Cron('55 8 * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async syncSupplierOrders() {
@@ -115,9 +115,11 @@ export class InventoryService {
         }
       }
     }
+
+    this.logger.log('syncing supplierOrders completed');
   }
 
-  @Cron('5 18 * * *', {
+  @Cron('5 9 * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async missingWac() {
