@@ -12,7 +12,7 @@ export class InventoryService {
   })
   async finalOrders() {}
 
-  @Cron('50 16 * * *', {
+  @Cron('10 8 * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async syncSupplierItems() {
@@ -54,7 +54,7 @@ export class InventoryService {
     this.logger.log('syncing supplierItems completed');
   }
 
-  @Cron('0 18 * * *', {
+  @Cron('15 8 * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async syncSupplierOrders() {
@@ -298,6 +298,36 @@ export class InventoryService {
     WHERE shop_id = ${shop.shop_id}
     ORDER BY supplier_item_id, created_at;
   `;
+      for (const item of countItems) {
+        const allItems =
+          await this.databaseService.inventory.shop_item_weighted_price.findMany(
+            {
+              where: {
+                shop_id: shop.shop_id,
+                supplier_item_id: item.supplier_item_id,
+              },
+              orderBy: {
+                created_at: 'asc',
+              },
+            },
+          );
+
+        const noneNullSourceDetailIds = allItems.filter(
+          (i) => i.source_detail_id !== null,
+        );
+        if (noneNullSourceDetailIds.length > 0) {
+          const supplyOrderDetails =
+            await this.databaseService.inventory.supplier_order_details.findMany(
+              {
+                where: {
+                  id: {
+                    in: noneNullSourceDetailIds.map((i) => i.id),
+                  },
+                },
+              },
+            );
+        }
+      }
     }
   }
 }
