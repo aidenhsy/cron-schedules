@@ -54,10 +54,11 @@ export class InventoryService {
     this.logger.log('syncing supplierItems completed');
   }
 
-  @Cron('55 8 * * *', {
+  @Cron('25 7 * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async syncSupplierOrders() {
+    this.logger.log('starting syncing supplierOrders');
     const batchSize = 100;
     let skip = 0;
     let hasMoreOrders = true;
