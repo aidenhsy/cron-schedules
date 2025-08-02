@@ -87,70 +87,31 @@ export class InventoryService {
 
       skip += batchSize;
 
-      const inventoryOrders =
-        await this.databaseService.inventory.supplier_orders.findMany({
+      for (const finishedOrder of finishedOrders) {
+        const { supplier_order_details, ...rest } = finishedOrder;
+        await this.databaseService.inventory.supplier_orders.upsert({
           where: {
-            id: {
-              in: finishedOrders.map((order) => order.id),
-            },
+            id: rest.id,
           },
-          include: {
-            supplier_order_details: true,
+          update: {
+            ...rest,
+          },
+          create: {
+            ...rest,
           },
         });
-
-      const missingInventoryOrders = finishedOrders.filter(
-        (order) => !inventoryOrders.some((i) => i.id === order.id),
-      );
-
-      if (missingInventoryOrders.length > 0) {
-        this.logger.warn(
-          `Missing inventory orders: ${missingInventoryOrders.map((o) => o.id).join(', ')}`,
-        );
-
-        for (const order of missingInventoryOrders) {
-          const { supplier_order_details, ...rest } = order;
-          await this.databaseService.inventory.supplier_orders.create({
-            data: {
-              ...rest,
+        for (const supplierOrderDetail of supplier_order_details) {
+          await this.databaseService.inventory.supplier_order_details.upsert({
+            where: {
+              id: supplierOrderDetail.id,
+            },
+            update: {
+              ...supplierOrderDetail,
+            },
+            create: {
+              ...supplierOrderDetail,
             },
           });
-          await this.databaseService.inventory.supplier_order_details.createMany(
-            {
-              data: order.supplier_order_details,
-            },
-          );
-        }
-      }
-
-      for (const finishedOrder of finishedOrders) {
-        for (const finishedOrderDetail of finishedOrder.supplier_order_details) {
-          const inventoryOrderDetail = inventoryOrders
-            .find((i) => i.id === finishedOrder.id)
-            ?.supplier_order_details.find(
-              (i) => i.id === finishedOrderDetail.id,
-            );
-
-          if (!inventoryOrderDetail) {
-            this.logger.warn(
-              `Missing inventory order detail: ${finishedOrderDetail.id}`,
-            );
-            continue;
-          }
-
-          if (
-            Number(finishedOrderDetail.final_qty) !==
-            Number(inventoryOrderDetail.final_qty)
-          ) {
-            await this.databaseService.inventory.supplier_order_details.update({
-              where: {
-                id: inventoryOrderDetail.id,
-              },
-              data: {
-                final_qty: finishedOrderDetail.final_qty,
-              },
-            });
-          }
         }
       }
     }
