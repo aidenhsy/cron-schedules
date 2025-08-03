@@ -110,7 +110,11 @@ export class ChecksService {
       `Checking im scm sync pricings for version ${getCurrentVersion()}`,
     );
     const supplierGoods =
-      await this.databaseService.procurement.supplier_items.findMany();
+      await this.databaseService.procurement.supplier_items.findMany({
+        where: {
+          status: 1,
+        },
+      });
 
     for (const good of supplierGoods) {
       const goodPrice =
@@ -930,7 +934,7 @@ export class ChecksService {
     this.logger.log('Checking calculated actual amount done');
   }
 
-  @Cron('55 * * * *', {
+  @Cron('55 7 * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async checkUnreceivedOrders() {

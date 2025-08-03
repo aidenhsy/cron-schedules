@@ -12,7 +12,7 @@ export class InventoryService {
   })
   async finalOrders() {}
 
-  @Cron('10 8 * * *', {
+  @Cron('25 17 * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async syncSupplierItems() {
@@ -54,7 +54,7 @@ export class InventoryService {
     this.logger.log('syncing supplierItems completed');
   }
 
-  @Cron('25 7 * * *', {
+  @Cron('28 17 * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async syncSupplierOrders() {
