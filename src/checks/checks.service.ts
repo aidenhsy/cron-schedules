@@ -138,7 +138,7 @@ export class ChecksService {
     this.logger.log('Checking im scm sync pricings done');
   }
 
-  @Cron('0 8 * * *', {
+  @Cron('0 * * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async checkDeliveryQty() {
