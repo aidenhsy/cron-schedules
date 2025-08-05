@@ -9,7 +9,7 @@ pipelines:
             - pipe: atlassian/ssh-run:0.4.0
               variables:
                 SSH_USER: 'dev'
-                SERVER: '47.76.166.234'
+                SERVER: '47.239.63.27'
                 COMMAND: |
                   cd /var/www/scheduled-checks && \
                   git checkout main && \
