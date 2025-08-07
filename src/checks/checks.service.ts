@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { getCurrentVersion } from '@saihu/common';
+import { getCurrentChinaTime, getCurrentVersion } from '@saihu/common';
 import { DatabaseService } from 'src/database/database.service';
 
 @Injectable()
@@ -110,7 +110,11 @@ export class ChecksService {
       `Checking im scm sync pricings for version ${getCurrentVersion()}`,
     );
     const supplierGoods =
-      await this.databaseService.procurement.supplier_items.findMany();
+      await this.databaseService.procurement.supplier_items.findMany({
+        where: {
+          status: 1,
+        },
+      });
 
     for (const good of supplierGoods) {
       const goodPrice =
@@ -398,6 +402,11 @@ export class ChecksService {
     while (hasMoreOrders) {
       const orders =
         await this.databaseService.order.procurement_orders.findMany({
+          where: {
+            status: {
+              in: [4, 5],
+            },
+          },
           select: {
             client_order_id: true,
             procurement_order_details: {
@@ -515,11 +524,11 @@ export class ChecksService {
     this.logger.log('Checking final qty done');
   }
 
-  @Cron('0 * * * *', {
+  @Cron('15 * * * *', {
     timeZone: 'Asia/Shanghai',
   })
-  async checkReceiveTime() {
-    this.logger.log('Checking receive time');
+  async checkDeliveryTime() {
+    this.logger.log('Checking final qty');
 
     const batchSize = 100;
     let skip = 0;
@@ -529,11 +538,12 @@ export class ChecksService {
       const orders =
         await this.databaseService.order.procurement_orders.findMany({
           select: {
+            id: true,
             client_order_id: true,
+            delivery_time: true,
             procurement_order_details: {
               select: {
                 reference_id: true,
-                customer_receive_qty: true,
                 id: true,
               },
             },
@@ -559,13 +569,7 @@ export class ChecksService {
           },
           select: {
             id: true,
-            supplier_order_details: {
-              select: {
-                id: true,
-                supplier_reference_id: true,
-                confirm_delivery_qty: true,
-              },
-            },
+            delivery_time: true,
           },
         });
 
@@ -579,32 +583,53 @@ export class ChecksService {
           continue;
         }
 
+        let delivery_time: Date | undefined = undefined;
         for (const orderDetail of order.procurement_order_details) {
-          const procurementDetail =
-            procurementOrder.supplier_order_details.find(
-              (d) => d.supplier_reference_id === orderDetail.reference_id,
-            );
-          if (!procurementDetail) {
-            console.log(`${orderDetail.reference_id} not found`);
-            continue;
-          }
-          if (
-            Number(procurementDetail.confirm_delivery_qty) !==
-            Number(orderDetail.customer_receive_qty)
-          ) {
-            await this.databaseService.order.procurement_order_details.update({
+          const basicDetail =
+            await this.databaseService.basic.scm_order_details.findFirst({
               where: {
-                id: orderDetail.id,
+                reference_order_id: order.client_order_id,
+                reference_id: orderDetail.reference_id,
               },
-              data: {
-                customer_receive_qty: procurementDetail.confirm_delivery_qty,
+              select: {
+                scm_order: {
+                  select: {
+                    delivery_time: true,
+                  },
+                },
               },
             });
+          if (!basicDetail) {
             console.log(
-              `${orderDetail.reference_id} difference ${procurementDetail.confirm_delivery_qty} ${orderDetail.customer_receive_qty} \n id: ${order.client_order_id} \n `,
+              `not found \n${orderDetail.reference_id} \n ${order.client_order_id} `,
             );
             console.log('-----------');
+            continue;
           }
+          delivery_time = basicDetail.scm_order?.delivery_time;
+        }
+
+        if (delivery_time) {
+          // update scm order
+          await this.databaseService.order.procurement_orders.update({
+            where: {
+              id: order.id,
+            },
+            data: {
+              sent_time: delivery_time,
+              delivery_time: delivery_time,
+            },
+          });
+          // update procurement
+          await this.databaseService.procurement.supplier_orders.update({
+            where: {
+              id: procurementOrder.id,
+            },
+            data: {
+              sent_time: delivery_time,
+              delivery_time: delivery_time,
+            },
+          });
         }
       }
 
@@ -612,6 +637,448 @@ export class ChecksService {
       skip += batchSize;
     }
 
+    this.logger.log('Checking final qty done');
+  }
+
+  @Cron('25 * * * *', {
+    timeZone: 'Asia/Shanghai',
+  })
+  async checkReceiveTime() {
+    this.logger.log('Checking receive time');
+
+    const batchSize = 100;
+    let skip = 0;
+    let hasMoreOrders = true;
+
+    while (hasMoreOrders) {
+      const orders =
+        await this.databaseService.procurement.supplier_orders.findMany({
+          where: {
+            status: {
+              in: [4, 5, 20],
+            },
+          },
+          select: {
+            id: true,
+            receive_time: true,
+            delivery_time: true,
+          },
+          take: batchSize,
+          skip: skip,
+        });
+
+      if (orders.length < batchSize) {
+        hasMoreOrders = false;
+      }
+
+      if (orders.length === 0) {
+        break;
+      }
+
+      const procurementOrders =
+        await this.databaseService.order.procurement_orders.findMany({
+          where: {
+            client_order_id: {
+              in: orders.map((order) => order.id),
+            },
+          },
+          select: {
+            id: true,
+            client_order_id: true,
+          },
+        });
+
+      for (const order of orders) {
+        const procurementOrder = procurementOrders.find(
+          (o) => o.client_order_id === order.id,
+        );
+
+        if (!procurementOrder) {
+          console.log(`${order.id} not found`);
+          continue;
+        }
+
+        if (order.receive_time === null) {
+          await this.databaseService.procurement.supplier_orders.update({
+            where: {
+              id: order.id,
+            },
+            data: {
+              receive_time: order.delivery_time,
+            },
+          });
+          await this.databaseService.order.procurement_orders.update({
+            where: {
+              id: procurementOrder.id,
+            },
+            data: {
+              customer_receive_time: order.delivery_time,
+            },
+          });
+          continue;
+        }
+
+        await this.databaseService.order.procurement_orders.update({
+          where: {
+            id: procurementOrder.id,
+          },
+          data: {
+            customer_receive_time: order.receive_time,
+          },
+        });
+      }
+
+      // Move to the next batch
+      skip += batchSize;
+    }
+
     this.logger.log('Checking receive time done');
+  }
+
+  @Cron('30 * * * *', {
+    timeZone: 'Asia/Shanghai',
+  })
+  async checkCalculatedAmount() {
+    this.logger.log('Checking calculated amount');
+
+    const batchSize = 100;
+    let skip = 0;
+    let hasMoreOrders = true;
+
+    while (hasMoreOrders) {
+      const scmOorders =
+        await this.databaseService.order.procurement_orders.findMany({
+          include: {
+            procurement_order_details: true,
+          },
+        });
+
+      if (scmOorders.length < batchSize) {
+        hasMoreOrders = false;
+      }
+
+      if (scmOorders.length === 0) {
+        break;
+      }
+
+      const imOrders =
+        await this.databaseService.procurement.supplier_orders.findMany({
+          where: {
+            id: {
+              in: scmOorders.map((order) => order.client_order_id),
+            },
+          },
+        });
+
+      for (const scmOrder of scmOorders) {
+        const imOrder = imOrders.find((o) => o.id === scmOrder.client_order_id);
+
+        if (!imOrder) {
+          console.log(`${scmOrder.client_order_id} not found`);
+          continue;
+        }
+
+        const orderTotal = scmOrder.procurement_order_details.reduce(
+          (acc, detail) =>
+            acc + Number(detail.order_qty) * Number(detail.price),
+          0,
+        );
+        const roundedOrderTotal = Math.round(orderTotal * 100) / 100;
+
+        if (Number(roundedOrderTotal) !== Number(imOrder.order_amount)) {
+          console.log(
+            `[calculated amount] ${scmOrder.client_order_id} order amount difference ${roundedOrderTotal} ${imOrder.order_amount}`,
+          );
+          console.log('-----------');
+          await this.databaseService.procurement.supplier_orders.update({
+            where: {
+              id: imOrder.id,
+            },
+            data: {
+              order_amount: roundedOrderTotal,
+            },
+          });
+          await this.databaseService.order.procurement_orders.update({
+            where: {
+              id: scmOrder.id,
+            },
+            data: {
+              order_amount: roundedOrderTotal,
+            },
+          });
+          continue;
+        }
+
+        if (Number(imOrder.order_amount) !== Number(scmOrder.order_amount)) {
+          console.log(
+            `[calculated amount] ${scmOrder.client_order_id} order amount for order and procurment difference ${imOrder.order_amount} ${scmOrder.order_amount}`,
+          );
+          console.log('-----------');
+          await this.databaseService.order.procurement_orders.update({
+            where: {
+              id: scmOrder.id,
+            },
+            data: {
+              order_amount: imOrder.order_amount,
+            },
+          });
+        }
+      }
+
+      // Move to the next batch
+      skip += batchSize;
+    }
+
+    this.logger.log('Checking calculated amount done');
+  }
+
+  @Cron('35 * * * *', {
+    timeZone: 'Asia/Shanghai',
+  })
+  async checkFinalAmount() {
+    this.logger.log('Checking final amount');
+
+    const batchSize = 100;
+    let skip = 0;
+    let hasMoreOrders = true;
+
+    while (hasMoreOrders) {
+      const scmOorders =
+        await this.databaseService.order.procurement_orders.findMany({
+          include: {
+            procurement_order_details: true,
+          },
+          where: {
+            status: {
+              in: [4, 5],
+            },
+          },
+        });
+
+      if (scmOorders.length < batchSize) {
+        hasMoreOrders = false;
+      }
+
+      if (scmOorders.length === 0) {
+        break;
+      }
+
+      const imOrders =
+        await this.databaseService.procurement.supplier_orders.findMany({
+          where: {
+            id: {
+              in: scmOorders.map((order) => order.client_order_id),
+            },
+          },
+        });
+
+      for (const scmOrder of scmOorders) {
+        const imOrder = imOrders.find((o) => o.id === scmOrder.client_order_id);
+
+        if (!imOrder) {
+          console.log(`${scmOrder.client_order_id} not found`);
+          continue;
+        }
+
+        const finalTotal = scmOrder.procurement_order_details.reduce(
+          (acc, detail) =>
+            acc + Number(detail.final_qty) * Number(detail.price),
+          0,
+        );
+        const roundedFinalTotal = Math.round(finalTotal * 100) / 100;
+
+        if (Number(roundedFinalTotal) !== Number(imOrder.actual_amount)) {
+          console.log(
+            `[calculated final amount] ${scmOrder.client_order_id} final amount difference ${roundedFinalTotal} ${imOrder.order_amount}`,
+          );
+          console.log('-----------');
+          await this.databaseService.procurement.supplier_orders.update({
+            where: {
+              id: imOrder.id,
+            },
+            data: {
+              actual_amount: roundedFinalTotal,
+            },
+          });
+          await this.databaseService.order.procurement_orders.update({
+            where: {
+              id: scmOrder.id,
+            },
+            data: {
+              actual_amount: roundedFinalTotal,
+            },
+          });
+          continue;
+        }
+
+        if (Number(imOrder.actual_amount) !== Number(scmOrder.actual_amount)) {
+          console.log(
+            `[calculated amount] ${scmOrder.client_order_id} order amount for order and procurment difference ${imOrder.order_amount} ${scmOrder.order_amount}`,
+          );
+          console.log('-----------');
+          await this.databaseService.order.procurement_orders.update({
+            where: {
+              id: scmOrder.id,
+            },
+            data: {
+              actual_amount: imOrder.actual_amount,
+            },
+          });
+        }
+      }
+
+      // Move to the next batch
+      skip += batchSize;
+    }
+
+    this.logger.log('Checking calculated actual amount done');
+  }
+
+  @Cron('55 7 * * *', {
+    timeZone: 'Asia/Shanghai',
+  })
+  async checkUnreceivedOrders() {
+    const today = getCurrentChinaTime();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayDate = yesterday.toISOString().split('T')[0];
+    const yesterdayDateWithTime = new Date(`${yesterdayDate}T12:00:00Z`);
+
+    this.logger.log(
+      `Checking unreceived orders before ${yesterdayDateWithTime.toISOString()}`,
+    );
+
+    const imOrders =
+      await this.databaseService.procurement.supplier_orders.findMany({
+        where: {
+          status: 2,
+          delivery_time: {
+            lt: yesterdayDateWithTime,
+          },
+        },
+        include: {
+          supplier_order_details: true,
+        },
+      });
+
+    const scmOrders =
+      await this.databaseService.order.procurement_orders.findMany({
+        where: {
+          client_order_id: {
+            in: imOrders.map((order) => order.id),
+          },
+        },
+        include: {
+          procurement_order_details: true,
+        },
+      });
+
+    for (const imOrder of imOrders) {
+      const scmOrder = scmOrders.find((o) => o.client_order_id === imOrder.id);
+
+      if (!scmOrder) {
+        console.log(`${imOrder.id} not found`);
+        continue;
+      }
+
+      for (const imOrderDetail of imOrder.supplier_order_details) {
+        const scmOrderDetail = scmOrder.procurement_order_details.find(
+          (o) => o.reference_id === imOrderDetail.supplier_reference_id,
+        );
+
+        if (!scmOrderDetail) {
+          console.log(
+            `scm order detail ${imOrderDetail.supplier_reference_id} not found`,
+          );
+          continue;
+        }
+
+        const basicDetail =
+          await this.databaseService.basic.scm_order_details.findFirst({
+            where: {
+              reference_order_id: imOrder.id,
+              reference_id: imOrderDetail.supplier_reference_id,
+            },
+          });
+
+        if (!basicDetail) {
+          console.log(
+            `basic order detail ${imOrderDetail.supplier_reference_id} not found`,
+          );
+          continue;
+        }
+
+        await this.databaseService.procurement.supplier_order_details.update({
+          where: {
+            id: imOrderDetail.id,
+          },
+          data: {
+            actual_delivery_qty: basicDetail.deliver_goods_qty,
+            confirm_delivery_qty: basicDetail.deliver_goods_qty,
+            final_qty: basicDetail.deliver_goods_qty,
+          },
+        });
+
+        await this.databaseService.order.procurement_order_details.update({
+          where: {
+            id: scmOrderDetail.id,
+          },
+          data: {
+            deliver_qty: basicDetail.deliver_goods_qty,
+            customer_receive_qty: basicDetail.deliver_goods_qty,
+            final_qty: basicDetail.deliver_goods_qty,
+          },
+        });
+      }
+
+      const updatedScmOrder =
+        await this.databaseService.order.procurement_orders.findFirst({
+          where: {
+            id: scmOrder.id,
+          },
+          include: {
+            procurement_order_details: true,
+          },
+        });
+
+      const updatedImOrder =
+        await this.databaseService.procurement.supplier_orders.findFirst({
+          where: {
+            id: imOrder.id,
+          },
+          include: {
+            supplier_order_details: true,
+          },
+        });
+
+      const totalAmount = updatedScmOrder!.procurement_order_details.reduce(
+        (acc, detail) => acc + Number(detail.final_qty) * Number(detail.price),
+        0,
+      );
+
+      const roundedTotalAmount = Math.round(totalAmount * 100) / 100;
+
+      await this.databaseService.order.procurement_orders.update({
+        where: {
+          id: scmOrder.id,
+        },
+        data: {
+          actual_amount: roundedTotalAmount,
+          status: 4,
+        },
+      });
+
+      await this.databaseService.procurement.supplier_orders.update({
+        where: {
+          id: imOrder.id,
+        },
+        data: {
+          actual_amount: roundedTotalAmount,
+          status: 4,
+        },
+      });
+    }
+
+    this.logger.log('Checking unreceived orders done');
   }
 }
