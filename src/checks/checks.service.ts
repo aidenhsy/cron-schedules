@@ -8,7 +8,7 @@ export class ChecksService {
   private readonly logger = new Logger(`${ChecksService.name}`);
   constructor(private readonly databaseService: DatabaseService) {}
 
-  @Cron('00 22 * * *', {
+  @Cron('45 12 * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async checkDifferentOrders() {
