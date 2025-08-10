@@ -934,10 +934,11 @@ export class ChecksService {
     this.logger.log('Checking calculated actual amount done');
   }
 
-  @Cron('38 11 * * *', {
+  @Cron('35 15 * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async checkUnreceivedOrders() {
+    this.logger.log('Checking unreceived orders');
     const today = getCurrentChinaTime();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
