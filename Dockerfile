@@ -22,5 +22,5 @@
   # 5️⃣ Build app
   RUN npm run build
   
-  EXPOSE 3000
+  EXPOSE 3030
   CMD ["npm", "start"]

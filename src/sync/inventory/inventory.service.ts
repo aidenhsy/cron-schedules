@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Post } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { DatabaseService } from 'src/database/database.service';
 
@@ -7,54 +7,46 @@ export class InventoryService {
   private readonly logger = new Logger(`${InventoryService.name}`);
   constructor(private readonly databaseService: DatabaseService) {}
 
-  @Cron('0 * * * *', {
-    timeZone: 'Asia/Shanghai',
-  })
-  async finalOrders() {}
-
-  @Cron('25 17 * * *', {
+  @Cron('59 11 * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async syncSupplierItems() {
     this.logger.log('starting syncing supplierItems');
-    const batchSize = 500;
-    let skip = 0;
-    let hasMoreOrders = true;
+    const supplierItems =
+      await this.databaseService.procurement.supplier_items.findMany();
 
-    while (hasMoreOrders) {
-      const supplierItems =
-        await this.databaseService.procurement.supplier_items.findMany({
-          skip,
-          take: batchSize,
-        });
-
-      if (supplierItems.length < batchSize) {
-        hasMoreOrders = false;
-      }
-
-      if (supplierItems.length === 0) {
-        break;
-      }
-
-      skip += batchSize;
-      for (const supplierItem of supplierItems) {
-        await this.databaseService.inventory.supplier_items.upsert({
-          where: {
-            id: supplierItem.id,
-          },
-          update: {
-            ...supplierItem,
-          },
-          create: {
-            ...supplierItem,
-          },
-        });
-      }
+    for (const item of supplierItems) {
+      await this.databaseService.inventory.supplier_items.upsert({
+        where: {
+          id: item.id,
+        },
+        update: {
+          ...item,
+        },
+        create: {
+          ...item,
+        },
+      });
     }
-    this.logger.log('syncing supplierItems completed');
+    const genericItems =
+      await this.databaseService.procurement.generic_items.findMany();
+
+    for (const item of genericItems) {
+      await this.databaseService.inventory.generic_items.upsert({
+        where: {
+          id: item.id,
+        },
+        update: {
+          ...item,
+        },
+        create: {
+          ...item,
+        },
+      });
+    }
   }
 
-  @Cron('28 17 * * *', {
+  @Cron('28 3 * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async syncSupplierOrders() {
@@ -120,9 +112,6 @@ export class InventoryService {
     this.logger.log('syncing supplierOrders completed');
   }
 
-  @Cron('5 9 * * *', {
-    timeZone: 'Asia/Shanghai',
-  })
   async missingWac() {
     const batchSize = 100;
     let skip = 0;
@@ -239,9 +228,6 @@ export class InventoryService {
     }
   }
 
-  @Cron('15 18 * * *', {
-    timeZone: 'Asia/Shanghai',
-  })
   async recalculateWac() {
     const batchSize = 100;
 
