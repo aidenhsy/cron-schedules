@@ -934,7 +934,7 @@ export class ChecksService {
     this.logger.log('Checking calculated actual amount done');
   }
 
-  @Cron('35 15 * * *', {
+  @Cron('55 15 * * *', {
     timeZone: 'Asia/Shanghai',
   })
   async checkUnreceivedOrders() {
