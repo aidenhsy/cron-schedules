@@ -3,11 +3,14 @@
 
   WORKDIR /app
   
-  # 1️⃣ Copy only files that affect deps
-  COPY . .
+  # 1️⃣ Copy only package files for dependency install
+  COPY package*.json ./
   
-  # 2️⃣ Install production deps
+  # 2️⃣ Install deps (cached unless package.json changes)
   RUN npm install
+  
+  # 3️⃣ Copy the rest of the code
+  COPY . .
   
   # 4️⃣ Generate Prisma clients
   RUN npx prisma generate --schema=prisma/scmorder.prisma && \
@@ -16,7 +19,7 @@
       npx prisma generate --schema=prisma/scmpricing.prisma && \
       npx prisma generate --schema=prisma/inventory.prisma
   
-  # 5️⃣ Copy remaining app code and build
+  # 5️⃣ Build app
   RUN npm run build
   
   EXPOSE 3000
