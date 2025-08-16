@@ -189,7 +189,7 @@ export class InventoryService {
               await this.databaseService.inventory.shop_item_weighted_price.create(
                 {
                   data: {
-                    source_order_id: supplierOrder.id,
+                    source_id: supplierOrder.id,
                     source_detail_id: supplierOrderDetail.id,
                     supplier_item_id: supplierOrderDetail.supplier_item_id!,
                     created_at: supplierOrder.receive_time,
@@ -206,7 +206,7 @@ export class InventoryService {
               await this.databaseService.inventory.shop_item_weighted_price.create(
                 {
                   data: {
-                    source_order_id: supplierOrder.id,
+                    source_id: supplierOrder.id,
                     source_detail_id: supplierOrderDetail.id,
                     supplier_item_id: supplierOrderDetail.supplier_item_id!,
                     created_at: supplierOrder.receive_time,

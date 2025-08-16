@@ -17,7 +17,13 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "db:procurement": "prisma db pull --schema=prisma/procurement.prisma && prisma generate --schema=prisma/procurement.prisma",
+    "db:inventory": "prisma db pull --schema=prisma/inventory.prisma && prisma generate --schema=prisma/inventory.prisma",
+    "db:scmbasic": "prisma db pull --schema=prisma/scmbasic.prisma && prisma generate --schema=prisma/scmbasic.prisma",
+    "db:scmorder": "prisma db pull --schema=prisma/scmorder.prisma && prisma generate --schema=prisma/scmorder.prisma",
+    "db:scmpricing": "prisma db pull --schema=prisma/scmpricing.prisma && prisma generate --schema=prisma/scmpricing.prisma",
+    "db:all": "npm run db:procurement && npm run db:inventory && npm run db:scmbasic && npm run db:scmorder && npm run db:scmpricing"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -27,6 +33,8 @@
     "@nestjs/schedule": "^6.0.0",
     "@prisma/client": "^6.12.0",
     "@saihu/common": "^1.1.19",
+    "axios": "^1.11.0",
+    "json-bigint": "^1.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },
@@ -40,6 +48,7 @@
     "@swc/core": "^1.10.7",
     "@types/express": "^5.0.0",
     "@types/jest": "^29.5.14",
+    "@types/json-bigint": "^1.0.4",
     "@types/node": "^22.10.7",
     "@types/supertest": "^6.0.2",
     "eslint": "^9.18.0",

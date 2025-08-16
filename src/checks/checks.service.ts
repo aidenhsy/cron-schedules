@@ -506,7 +506,7 @@ export class ChecksService {
                 id: basicDetail.id,
               },
               data: {
-                delivery_qty: orderDetail.final_qty,
+                delivery_qty: Number(orderDetail.final_qty),
               },
             });
             console.log(

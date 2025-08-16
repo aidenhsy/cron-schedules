@@ -400,6 +400,7 @@ model scm_good_units {
   private_client_goods                                                  private_client_goods[]
   scm_good_pricing                                                      scm_good_pricing[]
   scm_goods_scm_good_units_goods_idToscm_goods                          scm_goods              @relation("scm_good_units_goods_idToscm_goods", fields: [goods_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  scm_goods_scm_goods_order_good_unit_idToscm_good_units                scm_goods[]            @relation("scm_goods_order_good_unit_idToscm_good_units")
   scm_goods_scm_goods_purchase_good_unit_idToscm_good_units             scm_goods[]            @relation("scm_goods_purchase_good_unit_idToscm_good_units")
   scm_goods_copy1_scm_goods_copy1_base_good_unit_idToscm_good_units     scm_goods_copy1[]      @relation("scm_goods_copy1_base_good_unit_idToscm_good_units")
   scm_goods_copy1_scm_goods_copy1_count_good_unit_idToscm_good_units    scm_goods_copy1[]      @relation("scm_goods_copy1_count_good_unit_idToscm_good_units")
@@ -468,6 +469,7 @@ model scm_goods {
   scm_good_pricing                                               scm_good_pricing[]
   scm_good_units_scm_good_units_goods_idToscm_goods              scm_good_units[]                 @relation("scm_good_units_goods_idToscm_goods")
   scm_goods_category                                             scm_goods_category               @relation(fields: [category_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_goods_category0")
+  scm_good_units_scm_goods_order_good_unit_idToscm_good_units    scm_good_units?                  @relation("scm_goods_order_good_unit_idToscm_good_units", fields: [order_good_unit_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_order_good_unit")
   scm_stock                                                      scm_stock?                       @relation(fields: [stock_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_scm_goods_scm_stock124")
   scm_good_units_scm_goods_purchase_good_unit_idToscm_good_units scm_good_units?                  @relation("scm_goods_purchase_good_unit_idToscm_good_units", fields: [purchase_good_unit_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   standard_units                                                 standard_units?                  @relation(fields: [standard_base_unit], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "scm_goods_standard_base_unit_id_fkey")

@@ -93,22 +93,25 @@ model private_client_goods {
 }
 
 model procurement_order_details {
-  id                   String             @id @default(dbgenerated("(uuid_generate_v4())::character varying")) @db.VarChar
-  name                 String?            @db.VarChar
-  reference_id         String?            @db.VarChar
-  order_qty            Decimal?           @db.Decimal(12, 4)
-  price                Decimal?           @db.Decimal(12, 4)
-  cut_off_time         String?            @db.VarChar
-  order_id             String             @db.VarChar
-  created_at           DateTime?          @default(dbgenerated("(now() AT TIME ZONE 'Asia/Shanghai'::text)")) @db.Timestamp(6)
-  updated_at           DateTime?          @default(dbgenerated("(now() AT TIME ZONE 'Asia/Shanghai'::text)")) @db.Timestamp(6)
-  deliver_qty          Decimal?           @db.Decimal(12, 4)
-  customer_receive_qty Decimal?           @db.Decimal(12, 4)
-  good_id              Int?
-  unit_id              String?            @db.VarChar
-  pricing_id           String?            @db.VarChar
-  final_qty            Decimal?           @db.Decimal(12, 4)
-  procurement_orders   procurement_orders @relation(fields: [order_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id                    String             @id @default(dbgenerated("(uuid_generate_v4())::character varying")) @db.VarChar
+  name                  String?            @db.VarChar
+  reference_id          String?            @db.VarChar
+  order_qty             Decimal?           @db.Decimal(12, 4)
+  price                 Decimal?           @db.Decimal(12, 4)
+  cut_off_time          String?            @db.VarChar
+  order_id              String             @db.VarChar
+  created_at            DateTime?          @default(dbgenerated("(now() AT TIME ZONE 'Asia/Shanghai'::text)")) @db.Timestamp(6)
+  updated_at            DateTime?          @default(dbgenerated("(now() AT TIME ZONE 'Asia/Shanghai'::text)")) @db.Timestamp(6)
+  deliver_qty           Decimal?           @db.Decimal(12, 4)
+  customer_receive_qty  Decimal?           @db.Decimal(12, 4)
+  good_id               Int?
+  unit_id               String?            @db.VarChar
+  pricing_id            String?            @db.VarChar
+  final_qty             Decimal?           @db.Decimal(12, 4)
+  weighted_average_cost Decimal?           @db.Decimal(12, 4)
+  total_cost_amount     Decimal?           @default(dbgenerated("round((final_qty * weighted_average_cost), 2)")) @db.Decimal(12, 2)
+  total_sale_amount     Decimal?           @default(dbgenerated("round((final_qty * price), 2)")) @db.Decimal(12, 2)
+  procurement_orders    procurement_orders @relation(fields: [order_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([reference_id, order_id], map: "unique_reference_order")
   @@index([reference_id], map: "idx_procurement_order_details_reference_id")
@@ -449,17 +452,11 @@ model scm_good_units {
   is_count_unit                                                         Boolean?               @default(false)
   private_client_goods                                                  private_client_goods[]
   scm_good_pricing                                                      scm_good_pricing[]
-  scm_goods_scm_good_units_goods_idToscm_goods                          scm_goods              @relation("scm_good_units_goods_idToscm_goods", fields: [goods_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  scm_goods_scm_goods_base_good_unit_idToscm_good_units                 scm_goods[]            @relation("scm_goods_base_good_unit_idToscm_good_units")
-  scm_goods_scm_goods_count_good_unit_idToscm_good_units                scm_goods[]            @relation("scm_goods_count_good_unit_idToscm_good_units")
   scm_goods_scm_goods_order_good_unit_idToscm_good_units                scm_goods[]            @relation("scm_goods_order_good_unit_idToscm_good_units")
-  scm_goods_scm_goods_purchase_good_unit_idToscm_good_units             scm_goods[]            @relation("scm_goods_purchase_good_unit_idToscm_good_units")
   scm_goods_copy1_scm_goods_copy1_base_good_unit_idToscm_good_units     scm_goods_copy1[]      @relation("scm_goods_copy1_base_good_unit_idToscm_good_units")
   scm_goods_copy1_scm_goods_copy1_count_good_unit_idToscm_good_units    scm_goods_copy1[]      @relation("scm_goods_copy1_count_good_unit_idToscm_good_units")
   scm_goods_copy1_scm_goods_copy1_order_good_unit_idToscm_good_units    scm_goods_copy1[]      @relation("scm_goods_copy1_order_good_unit_idToscm_good_units")
   scm_goods_copy1_scm_goods_copy1_purchase_good_unit_idToscm_good_units scm_goods_copy1[]      @relation("scm_goods_copy1_purchase_good_unit_idToscm_good_units")
-
-  @@unique([goods_id, ratio_to_base], map: "unique_good_id_ratio_to_base")
 }
 
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
@@ -477,68 +474,60 @@ model scm_good_units_scm {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model scm_goods {
-  id                                                             Int                              @id @default(autoincrement())
-  name                                                           String                           @db.VarChar(60)
-  category_id                                                    Int
-  serial_num                                                     String?                          @db.VarChar(60)
-  details                                                        String?
-  sort                                                           Int                              @default(0) @db.SmallInt
-  status                                                         Int                              @default(1) @db.SmallInt
-  create_time                                                    DateTime?                        @default(now()) @db.Timestamp(6)
-  update_time                                                    DateTime?                        @db.Timestamp(6)
-  stock_id                                                       Int?                             @db.SmallInt
-  sort_cate_id                                                   Int?                             @db.SmallInt
-  tt_code                                                        String?                          @db.VarChar
-  organization_id                                                Int?
-  letter_name                                                    String?                          @db.VarChar
-  weighing                                                       Int?                             @default(0) @db.SmallInt
-  supplier_id                                                    Int?
-  goods_price_id                                                 Int?
-  remarks                                                        String?                          @db.VarChar
-  direct                                                         Int?                             @default(1) @db.SmallInt
-  seller_id                                                      Int?
-  supplier_sorting                                               Int?                             @default(0) @db.SmallInt
-  s_day                                                          Int?                             @default(0) @db.SmallInt
-  e_day                                                          Int?                             @default(0) @db.SmallInt
-  sorting                                                        Int?                             @default(0)
-  photo_url                                                      String?                          @db.VarChar
-  is_count                                                       Boolean?                         @default(true)
-  base_good_unit_id                                              String?                          @db.VarChar
-  order_good_unit_id                                             String?                          @db.VarChar
-  spec_text                                                      String?                          @db.VarChar
-  price                                                          Decimal?                         @db.Decimal(12, 6)
-  storage_unit                                                   String?                          @db.VarChar
-  storage_sale_ratio                                             Int?
-  count_good_unit_id                                             String?                          @db.VarChar
-  purchase_good_unit_id                                          String?                          @db.VarChar
-  is_public                                                      Boolean                          @default(true)
-  averag_cost_price                                              Decimal?                         @db.Decimal(12, 6)
-  standard_base_unit_id                                          Int?
-  private_client_goods                                           private_client_goods[]
-  scm_bulk_picking                                               scm_bulk_picking[]
-  scm_bulk_picking_routes                                        scm_bulk_picking_routes[]
-  scm_ent_details                                                scm_ent_details[]
-  scm_good_pricing                                               scm_good_pricing[]
-  scm_good_units_scm_good_units_goods_idToscm_goods              scm_good_units[]                 @relation("scm_good_units_goods_idToscm_goods")
-  scm_good_units_scm_goods_base_good_unit_idToscm_good_units     scm_good_units?                  @relation("scm_goods_base_good_unit_idToscm_good_units", fields: [base_good_unit_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_good_base_unit90")
-  scm_good_units_scm_goods_count_good_unit_idToscm_good_units    scm_good_units?                  @relation("scm_goods_count_good_unit_idToscm_good_units", fields: [count_good_unit_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_good_count_unit01")
-  scm_good_units_scm_goods_order_good_unit_idToscm_good_units    scm_good_units?                  @relation("scm_goods_order_good_unit_idToscm_good_units", fields: [order_good_unit_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_good_order_unit108")
-  scm_goods_category                                             scm_goods_category               @relation(fields: [category_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_goods_category0")
-  supplier_scm_goods_seller_idTosupplier                         supplier?                        @relation("scm_goods_seller_idTosupplier", fields: [seller_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_goods_seller_id")
-  supplier_scm_goods_supplier_idTosupplier                       supplier?                        @relation("scm_goods_supplier_idTosupplier", fields: [supplier_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_goods_supplier_id")
-  scm_stock                                                      scm_stock?                       @relation(fields: [stock_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_scm_goods_scm_stock124")
-  scm_good_units_scm_goods_purchase_good_unit_idToscm_good_units scm_good_units?                  @relation("scm_goods_purchase_good_unit_idToscm_good_units", fields: [purchase_good_unit_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  standard_units                                                 standard_units?                  @relation(fields: [standard_base_unit_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  scm_goods_outbound                                             scm_goods_outbound[]
-  scm_goods_price_history                                        scm_goods_price_history[]
-  scm_order_details                                              scm_order_details[]
-  scm_price_plan_scm_goods                                       scm_price_plan_scm_goods[]
-  scm_return_goods                                               scm_return_goods[]
-  scm_storage_goods_log                                          scm_storage_goods_log[]
-  scm_storage_position_scm_goods                                 scm_storage_position_scm_goods[]
-  scm_supplier_price_plan                                        scm_supplier_price_plan[]
-  scm_suppliers_goods_daily                                      scm_suppliers_goods_daily[]
-  scm_transfer_stock                                             scm_transfer_stock[]
+  id                                                          Int                              @id @default(autoincrement())
+  name                                                        String                           @db.VarChar(60)
+  category_id                                                 Int
+  serial_num                                                  String?                          @db.VarChar(60)
+  details                                                     String?
+  sort                                                        Int                              @default(0) @db.SmallInt
+  status                                                      Int                              @default(1) @db.SmallInt
+  create_time                                                 DateTime?                        @default(now()) @db.Timestamp(6)
+  update_time                                                 DateTime?                        @db.Timestamp(6)
+  stock_id                                                    Int?                             @db.SmallInt
+  sort_cate_id                                                Int?                             @db.SmallInt
+  tt_code                                                     String?                          @db.VarChar
+  organization_id                                             Int?
+  letter_name                                                 String?                          @db.VarChar
+  weighing                                                    Int?                             @default(0) @db.SmallInt
+  supplier_id                                                 Int?
+  goods_price_id                                              Int?
+  remarks                                                     String?                          @db.VarChar
+  direct                                                      Int?                             @default(1) @db.SmallInt
+  seller_id                                                   Int?
+  supplier_sorting                                            Int?                             @default(0) @db.SmallInt
+  s_day                                                       Int?                             @default(0) @db.SmallInt
+  e_day                                                       Int?                             @default(0) @db.SmallInt
+  sorting                                                     Int?                             @default(0)
+  photo_url                                                   String?                          @db.VarChar
+  is_count                                                    Boolean?                         @default(true)
+  base_good_unit_id                                           String?                          @db.VarChar
+  order_good_unit_id                                          String?                          @db.VarChar
+  spec_text                                                   String?                          @db.VarChar
+  price                                                       Decimal?                         @db.Decimal(12, 6)
+  storage_unit                                                String?                          @db.VarChar
+  storage_sale_ratio                                          Int?
+  count_good_unit_id                                          String?                          @db.VarChar
+  purchase_good_unit_id                                       String?                          @db.VarChar
+  is_public                                                   Boolean                          @default(true)
+  averag_cost_price                                           Decimal?                         @db.Decimal(12, 6)
+  standard_base_unit_id                                       Int?
+  private_client_goods                                        private_client_goods[]
+  scm_bulk_picking                                            scm_bulk_picking[]
+  scm_bulk_picking_routes                                     scm_bulk_picking_routes[]
+  scm_ent_details                                             scm_ent_details[]
+  scm_good_pricing                                            scm_good_pricing[]
+  scm_good_units_scm_goods_order_good_unit_idToscm_good_units scm_good_units?                  @relation("scm_goods_order_good_unit_idToscm_good_units", fields: [order_good_unit_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_good_order_unit108")
+  standard_units                                              standard_units?                  @relation(fields: [standard_base_unit_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  scm_goods_outbound                                          scm_goods_outbound[]
+  scm_goods_price_history                                     scm_goods_price_history[]
+  scm_order_details                                           scm_order_details[]
+  scm_price_plan_scm_goods                                    scm_price_plan_scm_goods[]
+  scm_return_goods                                            scm_return_goods[]
+  scm_storage_goods_log                                       scm_storage_goods_log[]
+  scm_storage_position_scm_goods                              scm_storage_position_scm_goods[]
+  scm_supplier_price_plan                                     scm_supplier_price_plan[]
+  scm_suppliers_goods_daily                                   scm_suppliers_goods_daily[]
+  scm_transfer_stock                                          scm_transfer_stock[]
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
@@ -552,7 +541,6 @@ model scm_goods_category {
   status          Int               @default(1) @db.SmallInt
   level           Int?              @db.SmallInt
   serial_num      String?           @unique @db.VarChar
-  scm_goods       scm_goods[]
   scm_goods_copy1 scm_goods_copy1[]
 }
 
@@ -1033,7 +1021,6 @@ model scm_stock {
   sold_time       DateTime?         @default(dbgenerated("'15:00:00'::time without time zone")) @db.Time(6)
   small_storage   String?           @db.VarChar
   city_id         String?           @db.VarChar
-  scm_goods       scm_goods[]
   scm_goods_copy1 scm_goods_copy1[]
   scm_order_stock scm_order_stock[]
 }
@@ -1216,8 +1203,6 @@ model supplier {
   organization_id                                       Int
   created_at                                            DateTime?                       @default(now()) @db.Timestamp(6)
   scm_ent_stock                                         scm_ent_stock[]
-  scm_goods_scm_goods_seller_idTosupplier               scm_goods[]                     @relation("scm_goods_seller_idTosupplier")
-  scm_goods_scm_goods_supplier_idTosupplier             scm_goods[]                     @relation("scm_goods_supplier_idTosupplier")
   scm_goods_copy1_scm_goods_copy1_seller_idTosupplier   scm_goods_copy1[]               @relation("scm_goods_copy1_seller_idTosupplier")
   scm_goods_copy1_scm_goods_copy1_supplier_idTosupplier scm_goods_copy1[]               @relation("scm_goods_copy1_supplier_idTosupplier")
   scm_order_stock                                       scm_order_stock[]

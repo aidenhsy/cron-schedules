@@ -600,6 +600,7 @@ model scm_order {
   reference_id            String?               @db.VarChar
   client_org_id           Int?
   estimated_delivery_time DateTime?             @db.Date
+  arrival_time            DateTime?             @db.Timestamp(6)
   scm_bulk_picking        scm_bulk_picking[]
   client_organizations    client_organizations? @relation(fields: [client_org_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   day_info                day_info?             @relation(fields: [delivery_day_info_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -639,13 +640,13 @@ model scm_order_details {
   spec_text                     String?                         @db.VarChar(60)
   ratio                         Int?
   status                        Int                             @default(0) @db.SmallInt
-  order_id                      Int?
+  order_id                      Int
   create_time                   DateTime?                       @default(now()) @db.Timestamp(6)
   total_price                   Decimal?                        @db.Decimal(12, 6)
   small_unit                    String?                         @db.VarChar(10)
   sale_unit                     String?                         @db.VarChar(10)
   goods_id                      Int?
-  delivery_qty                  Decimal?                        @default(0) @db.Decimal(10, 2)
+  delivery_qty                  Decimal                         @default(0) @db.Decimal(10, 2)
   letter_name                   String?                         @db.VarChar
   hide_price                    Decimal?                        @default(0) @db.Decimal(12, 6)
   yu_price                      Decimal?                        @default(0) @db.Decimal(12, 6)
@@ -658,12 +659,14 @@ model scm_order_details {
   deliver_goods_qty             Decimal?                        @db.Decimal(12, 6)
   scm_goods_outbound            scm_goods_outbound[]
   scm_goods                     scm_goods?                      @relation(fields: [goods_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "scm_order_details_goods_id_fkey44")
-  scm_order                     scm_order?                      @relation(fields: [order_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  scm_order                     scm_order                       @relation(fields: [order_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   scm_order_stock               scm_order_stock?                @relation(fields: [stock_order_no], references: [stock_order_no], onDelete: NoAction, onUpdate: NoAction, map: "scm_order_details_stock_order_no_fkey42")
   scm_store_picking_supplyitems scm_store_picking_supplyitems[]
 
   @@index([order_id], map: "idx_scm_order_details_order_id")
   @@index([stock_order_no], map: "idx_scm_order_details_stock_order_no")
+  @@index([reference_id], map: "idx_scm_order_details_reference_id")
+  @@index([reference_order_id], map: "idx_scm_order_details_reference_order_id")
 }
 
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
@@ -1211,6 +1214,37 @@ model users_organizations {
   users                users?               @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([user_id, organization_id])
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model scm_order_details_1 {
+  id                 Int       @default(autoincrement())
+  stock_order_no     String?   @db.VarChar(60)
+  goods_name         String?   @db.VarChar(60)
+  num                Decimal?  @db.Decimal
+  price              Decimal?  @db.Decimal(12, 6)
+  spec_text          String?   @db.VarChar(60)
+  ratio              Int?
+  status             Int?      @db.SmallInt
+  order_id           Int?
+  create_time        DateTime? @db.Timestamp(6)
+  total_price        Decimal?  @db.Decimal(12, 6)
+  small_unit         String?   @db.VarChar(10)
+  sale_unit          String?   @db.VarChar(10)
+  goods_id           Int?
+  delivery_qty       Decimal?  @db.Decimal(10, 2)
+  letter_name        String?   @db.VarChar
+  hide_price         Decimal?  @db.Decimal(12, 6)
+  yu_price           Decimal?  @db.Decimal(12, 6)
+  item_total         Decimal?  @db.Decimal(12, 2)
+  remaining_quantity Decimal?  @db.Decimal(10, 4)
+  good_price_id      String?   @db.VarChar(50)
+  delivery_time      DateTime? @db.Timestamp(6)
+  reference_id       String?   @db.VarChar
+  reference_order_id String?   @db.VarChar
+  deliver_goods_qty  Decimal?  @db.Decimal(12, 6)
+
+  @@ignore
 }
 
 enum pricing_strategy_type {
