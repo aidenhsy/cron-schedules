@@ -8,9 +8,9 @@ export class ChecksService {
   private readonly logger = new Logger(`${ChecksService.name}`);
   constructor(private readonly databaseService: DatabaseService) {}
 
-  @Cron('45 12 * * *', {
-    timeZone: 'Asia/Shanghai',
-  })
+  // @Cron('45 12 * * *', {
+  //   timeZone: 'Asia/Shanghai',
+  // })
   async checkDifferentOrders() {
     this.logger.log('Checking different orders');
     const scmOrders =
@@ -51,9 +51,9 @@ export class ChecksService {
     this.logger.log('Checking different orders done');
   }
 
-  @Cron('42 11 * * *', {
-    timeZone: 'Asia/Shanghai',
-  })
+  // @Cron('42 11 * * *', {
+  //   timeZone: 'Asia/Shanghai',
+  // })
   async checkPricings() {
     this.logger.log(`Checking pricings for version ${getCurrentVersion()}`);
     const currentVersion = getCurrentVersion();
@@ -102,9 +102,9 @@ export class ChecksService {
     this.logger.log('Checking pricings done');
   }
 
-  @Cron('50 11 * * *', {
-    timeZone: 'Asia/Shanghai',
-  })
+  // @Cron('50 11 * * *', {
+  //   timeZone: 'Asia/Shanghai',
+  // })
   async checkImScmSyncPricings() {
     this.logger.log(
       `Checking im scm sync pricings for version ${getCurrentVersion()}`,
@@ -138,9 +138,9 @@ export class ChecksService {
     this.logger.log('Checking im scm sync pricings done');
   }
 
-  @Cron('0 * * * *', {
-    timeZone: 'Asia/Shanghai',
-  })
+  // @Cron('0 * * * *', {
+  //   timeZone: 'Asia/Shanghai',
+  // })
   async checkDeliveryQty() {
     this.logger.log('Checking delivery qty');
 
@@ -289,9 +289,9 @@ export class ChecksService {
     this.logger.log('Checking delivery qty done');
   }
 
-  @Cron('5 * * * *', {
-    timeZone: 'Asia/Shanghai',
-  })
+  // @Cron('5 * * * *', {
+  //   timeZone: 'Asia/Shanghai',
+  // })
   async checkReceiveQty() {
     this.logger.log('Checking receive qty');
 
@@ -389,9 +389,9 @@ export class ChecksService {
     this.logger.log('Checking receive qty done');
   }
 
-  @Cron('10 * * * *', {
-    timeZone: 'Asia/Shanghai',
-  })
+  // @Cron('10 * * * *', {
+  //   timeZone: 'Asia/Shanghai',
+  // })
   async checkFinalQty() {
     this.logger.log('Checking final qty');
 
@@ -524,9 +524,9 @@ export class ChecksService {
     this.logger.log('Checking final qty done');
   }
 
-  @Cron('15 * * * *', {
-    timeZone: 'Asia/Shanghai',
-  })
+  // @Cron('15 * * * *', {
+  //   timeZone: 'Asia/Shanghai',
+  // })
   async checkDeliveryTime() {
     this.logger.log('Checking final qty');
 
@@ -640,9 +640,9 @@ export class ChecksService {
     this.logger.log('Checking final qty done');
   }
 
-  @Cron('25 * * * *', {
-    timeZone: 'Asia/Shanghai',
-  })
+  // @Cron('25 * * * *', {
+  //   timeZone: 'Asia/Shanghai',
+  // })
   async checkReceiveTime() {
     this.logger.log('Checking receive time');
 
@@ -735,9 +735,9 @@ export class ChecksService {
     this.logger.log('Checking receive time done');
   }
 
-  @Cron('30 * * * *', {
-    timeZone: 'Asia/Shanghai',
-  })
+  // @Cron('30 * * * *', {
+  //   timeZone: 'Asia/Shanghai',
+  // })
   async checkCalculatedAmount() {
     this.logger.log('Checking calculated amount');
 
@@ -832,9 +832,9 @@ export class ChecksService {
     this.logger.log('Checking calculated amount done');
   }
 
-  @Cron('35 * * * *', {
-    timeZone: 'Asia/Shanghai',
-  })
+  // @Cron('35 * * * *', {
+  //   timeZone: 'Asia/Shanghai',
+  // })
   async checkFinalAmount() {
     this.logger.log('Checking final amount');
 
@@ -934,9 +934,9 @@ export class ChecksService {
     this.logger.log('Checking calculated actual amount done');
   }
 
-  @Cron('07 16 * * *', {
-    timeZone: 'Asia/Shanghai',
-  })
+  // @Cron('07 16 * * *', {
+  //   timeZone: 'Asia/Shanghai',
+  // })
   async checkUnreceivedOrders() {
     this.logger.log('Checking unreceived orders');
     const today = getCurrentChinaTime();

@@ -20,6 +20,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "db:procurement": "prisma db pull --schema=prisma/procurement.prisma && prisma generate --schema=prisma/procurement.prisma",
     "db:inventory": "prisma db pull --schema=prisma/inventory.prisma && prisma generate --schema=prisma/inventory.prisma",
+    "db:imbasic": "prisma db pull --schema=prisma/imbasic.prisma && prisma generate --schema=prisma/imbasic.prisma",
     "db:scmbasic": "prisma db pull --schema=prisma/scmbasic.prisma && prisma generate --schema=prisma/scmbasic.prisma",
     "db:scmorder": "prisma db pull --schema=prisma/scmorder.prisma && prisma generate --schema=prisma/scmorder.prisma",
     "db:scmpricing": "prisma db pull --schema=prisma/scmpricing.prisma && prisma generate --schema=prisma/scmpricing.prisma",

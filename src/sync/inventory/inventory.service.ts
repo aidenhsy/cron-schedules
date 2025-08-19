@@ -7,9 +7,9 @@ export class InventoryService {
   private readonly logger = new Logger(`${InventoryService.name}`);
   constructor(private readonly databaseService: DatabaseService) {}
 
-  @Cron('59 11 * * *', {
-    timeZone: 'Asia/Shanghai',
-  })
+  // @Cron('59 11 * * *', {
+  //   timeZone: 'Asia/Shanghai',
+  // })
   async syncSupplierItems() {
     this.logger.log('starting syncing supplierItems');
     const supplierItems =
@@ -46,9 +46,9 @@ export class InventoryService {
     }
   }
 
-  @Cron('28 3 * * *', {
-    timeZone: 'Asia/Shanghai',
-  })
+  // @Cron('28 3 * * *', {
+  //   timeZone: 'Asia/Shanghai',
+  // })
   async syncSupplierOrders() {
     this.logger.log('starting syncing supplierOrders');
     const batchSize = 100;
