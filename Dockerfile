@@ -14,6 +14,7 @@
   
   # 4️⃣ Generate Prisma clients
   RUN npx prisma generate --schema=prisma/scmorder.prisma && \
+      npx prisma generate --schema=prisma/imbasic.prisma && \
       npx prisma generate --schema=prisma/scmbasic.prisma && \
       npx prisma generate --schema=prisma/procurement.prisma && \
       npx prisma generate --schema=prisma/scmpricing.prisma && \
