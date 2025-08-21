@@ -49,4 +49,25 @@ export class BasicDataService {
     );
     return res.data.data;
   }
+
+  async getItemCategoryInfo(pageNo: number) {
+    const token = await this.authService.accessToken();
+    const res = await axiosInstance.post(
+      'https://cysms.wuuxiang.com/api/datatransfer/getitemcategoryinfo',
+      {},
+      {
+        headers: {
+          accessid: process.env.ACCESS_ID,
+          granttype: 'client',
+          access_token: token,
+        },
+        params: {
+          centerId: process.env.CENTER_ID,
+          pageSize: 50,
+          pageNo: pageNo,
+        },
+      },
+    );
+    return res.data.data;
+  }
 }

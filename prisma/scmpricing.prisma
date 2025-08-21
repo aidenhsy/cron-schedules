@@ -361,8 +361,8 @@ model scm_good_pricing {
   updated_at            DateTime?      @default(now()) @db.Timestamp(6)
   id                    String         @id @default(dbgenerated("(uuid_generate_v4())::character varying")) @db.VarChar
   city_id               Int?
+  external_reference_id String?        @unique(map: "unique_external_reference_id") @default(dbgenerated("(((((((((version)::text || '-'::text) || client_tier_id) || '-'::text) || goods_id) || '-'::text) || city_id) || '-'::text) || (good_unit_id)::text)"))
   cut_off_time          String?        @db.VarChar(50)
-  external_reference_id String?        @default(dbgenerated("(((((((((version)::text || '-'::text) || (client_tier_id)::text) || '-'::text) || (goods_id)::text) || '-'::text) || (city_id)::text) || '-'::text) || (good_unit_id)::text)"))
   weighted_average_cost Decimal?       @db.Decimal(12, 4)
   cities                cities?        @relation(fields: [city_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   client_tier           client_tier    @relation(fields: [client_tier_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -370,8 +370,6 @@ model scm_good_pricing {
   scm_goods             scm_goods      @relation(fields: [goods_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([goods_id, good_unit_id, client_tier_id, version, city_id, is_active], map: "unique_client_tier_goods_unit_version")
-  @@unique([client_tier_id, version, city_id, goods_id], map: "unique_pricing_combination")
-  @@index([external_reference_id], map: "idx_scm_good_pricing_external_ref_id")
 }
 
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
@@ -400,7 +398,6 @@ model scm_good_units {
   private_client_goods                                                  private_client_goods[]
   scm_good_pricing                                                      scm_good_pricing[]
   scm_goods_scm_good_units_goods_idToscm_goods                          scm_goods              @relation("scm_good_units_goods_idToscm_goods", fields: [goods_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  scm_goods_scm_goods_order_good_unit_idToscm_good_units                scm_goods[]            @relation("scm_goods_order_good_unit_idToscm_good_units")
   scm_goods_scm_goods_purchase_good_unit_idToscm_good_units             scm_goods[]            @relation("scm_goods_purchase_good_unit_idToscm_good_units")
   scm_goods_copy1_scm_goods_copy1_base_good_unit_idToscm_good_units     scm_goods_copy1[]      @relation("scm_goods_copy1_base_good_unit_idToscm_good_units")
   scm_goods_copy1_scm_goods_copy1_count_good_unit_idToscm_good_units    scm_goods_copy1[]      @relation("scm_goods_copy1_count_good_unit_idToscm_good_units")
@@ -469,7 +466,6 @@ model scm_goods {
   scm_good_pricing                                               scm_good_pricing[]
   scm_good_units_scm_good_units_goods_idToscm_goods              scm_good_units[]                 @relation("scm_good_units_goods_idToscm_goods")
   scm_goods_category                                             scm_goods_category               @relation(fields: [category_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_goods_category0")
-  scm_good_units_scm_goods_order_good_unit_idToscm_good_units    scm_good_units?                  @relation("scm_goods_order_good_unit_idToscm_good_units", fields: [order_good_unit_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_order_good_unit")
   scm_stock                                                      scm_stock?                       @relation(fields: [stock_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_scm_goods_scm_stock124")
   scm_good_units_scm_goods_purchase_good_unit_idToscm_good_units scm_good_units?                  @relation("scm_goods_purchase_good_unit_idToscm_good_units", fields: [purchase_good_unit_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   standard_units                                                 standard_units?                  @relation(fields: [standard_base_unit], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "scm_goods_standard_base_unit_id_fkey")

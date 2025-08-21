@@ -7,9 +7,15 @@ import { FoodItemService } from './food-item/food-item.service';
 import { TcslModule } from 'src/tcsl/tcsl.module';
 import { OrderController } from './order/order.controller';
 import { OrderService } from './order/order.service';
+import { FoodCategoryService } from './food-item/food-category.service';
 
 @Module({
-  providers: [InventoryService, FoodItemService, OrderService],
+  providers: [
+    InventoryService,
+    FoodItemService,
+    OrderService,
+    FoodCategoryService,
+  ],
   imports: [DatabaseModule, TcslModule],
   controllers: [InventoryController, FoodItemController, OrderController],
 })

@@ -3,15 +3,16 @@ import { DatabaseService } from 'src/database/database.service';
 import { BasicDataService } from 'src/tcsl/基础档案/基础档案.service';
 
 @Injectable()
-export class FoodItemService {
+export class FoodCategoryService {
   constructor(
     private readonly basicDataService: BasicDataService,
     private readonly databaseService: DatabaseService,
   ) {}
 
-  async syncFoodItem() {
+  async syncFoodCategory() {
     let hasMore = true;
     let pageNo = 1;
+
     const activeBrannds =
       await this.databaseService.imbasic.scm_shop_brand.findMany({
         where: {
@@ -22,45 +23,35 @@ export class FoodItemService {
       activeBrannds.map((brand) => [brand.tcsl_id, brand]),
     );
     while (hasMore) {
-      const res = await this.basicDataService.getitems(pageNo);
-
+      const res = await this.basicDataService.getItemCategoryInfo(pageNo);
       // syncing data
       const syncItems: {
         id: string;
         name: string;
-        unit_name: string;
-        price: number;
-        category_id: string;
-        brand_id: number;
-        big_pic_url: string;
-        is_package: boolean;
-        is_enabled: boolean;
-        create_date: Date;
+        brand_id?: number | null;
+        level: number;
+        brand_name: string;
+        delflg: number;
+        parent_id: string;
       }[] = [];
-      for (const item of res.item) {
+      for (const item of res.category) {
         const brand = activeBrandsMap.get(item.brand_id);
-        if (brand) {
-          // console.log(brand, item.item_name);
-          // console.log(item);
-          const syncData = {
-            id: item.item_id,
-            name: item.item_name,
-            unit_name: item.unit_name,
-            price: item.std_price,
-            category_id: item.small_class_id,
-            brand_id: brand.id,
-            big_pic_url: item.big_pic_url,
-            is_package: item.is_package,
-            is_enabled: item.is_enable,
-            create_date: new Date(item.create_time),
-          };
-          syncItems.push(syncData);
-        }
+
+        const syncData = {
+          id: String(item.class_id),
+          name: item.class_name,
+          brand_id: brand?.id || null,
+          level: item.level,
+          brand_name: item.brand_name,
+          delflg: item.delflg,
+          parent_id: String(item.parent_id),
+        };
+        syncItems.push(syncData);
       }
 
       if (syncItems.length > 0) {
         for (const syncItem of syncItems) {
-          await this.databaseService.imbasic.st_food_item.upsert({
+          await this.databaseService.imbasic.st_food_category.upsert({
             where: {
               id: syncItem.id,
             },
