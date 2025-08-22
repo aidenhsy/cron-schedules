@@ -24,9 +24,10 @@
     "db:scmbasic": "prisma db pull --schema=prisma/scmbasic.prisma && prisma generate --schema=prisma/scmbasic.prisma",
     "db:scmorder": "prisma db pull --schema=prisma/scmorder.prisma && prisma generate --schema=prisma/scmorder.prisma",
     "db:scmpricing": "prisma db pull --schema=prisma/scmpricing.prisma && prisma generate --schema=prisma/scmpricing.prisma",
-    "db:all": "npm run db:procurement && npm run db:inventory && npm run db:scmbasic && npm run db:scmorder && npm run db:scmpricing"
+    "db:all": "npm run db:procurement && npm run db:imbasic && npm run db:inventory && npm run db:scmbasic && npm run db:scmorder && npm run db:scmpricing"
   },
   "dependencies": {
+    "@nestjs-modules/mailer": "^2.0.2",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",

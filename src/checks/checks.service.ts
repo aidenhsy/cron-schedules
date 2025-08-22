@@ -1,3 +1,4 @@
+import { MailService } from './../mail/mail.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { getCurrentChinaTime, getCurrentVersion } from '@saihu/common';
@@ -6,7 +7,10 @@ import { DatabaseService } from 'src/database/database.service';
 @Injectable()
 export class ChecksService {
   private readonly logger = new Logger(`${ChecksService.name}`);
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly mailService: MailService,
+  ) {}
 
   // @Cron('45 12 * * *', {
   //   timeZone: 'Asia/Shanghai',
@@ -49,6 +53,20 @@ export class ChecksService {
     }
 
     this.logger.log('Checking different orders done');
+
+    await this.mailService.sendMail({
+      to: 'aiden@shaihukeji.com',
+      subject: 'Different orders check',
+      text: `Missing SCM orders: ${missingScmOrders.length}, Missing procurement orders: ${missingProcurementOrders.length}`,
+      attachments: [],
+    });
+
+    return {
+      missingScmOrders: missingScmOrders.map((order) => order.id),
+      missingProcurementOrders: missingProcurementOrders.map(
+        (order) => order.id,
+      ),
+    };
   }
 
   // @Cron('42 11 * * *', {
@@ -148,6 +166,8 @@ export class ChecksService {
     let skip = 0;
     let hasMoreOrders = true;
 
+    let report = '';
+
     while (hasMoreOrders) {
       const orders =
         await this.databaseService.order.procurement_orders.findMany({
@@ -241,6 +261,7 @@ export class ChecksService {
                 `[delivery qty] ${orderDetail.reference_id} scm-order difference ${basicDetail.deliver_goods_qty} ${orderDetail.deliver_qty} \n id: ${order.client_order_id} \n `,
               );
               console.log('-----------');
+              report += `[delivery qty] ${orderDetail.reference_id} scm-order difference ${basicDetail.deliver_goods_qty} ${orderDetail.deliver_qty} \n id: ${order.client_order_id} \n `;
             }
             if (
               Number(procurementDetail.actual_delivery_qty) !==
@@ -278,6 +299,7 @@ export class ChecksService {
               `[delivery qty] ${orderDetail.reference_id} procurement-order difference ${procurementDetail.actual_delivery_qty} ${orderDetail.deliver_qty} \n id: ${order.client_order_id} \n `,
             );
             console.log('-----------');
+            report += `[delivery qty] ${orderDetail.reference_id} procurement-order difference ${procurementDetail.actual_delivery_qty} ${orderDetail.deliver_qty} \n id: ${order.client_order_id} \n `;
           }
         }
       }
@@ -287,8 +309,37 @@ export class ChecksService {
     }
 
     this.logger.log('Checking delivery qty done');
+    return { report };
   }
 
+  async dailyReport() {
+    const { missingScmOrders, missingProcurementOrders } =
+      await this.checkDifferentOrders();
+
+    const { report } = await this.checkDeliveryQty();
+
+    const body = `
+  📊 Daily Report
+  
+    Missing Orders:
+    SCM orders: ${missingScmOrders.length}
+    Procurement orders: ${missingProcurementOrders.length}
+  
+    Delivery Qty Mismatch:
+    ${report}
+    `.trim();
+
+    await this.mailService.sendMail({
+      to: 'aiden@shaihukeji.com',
+      subject: 'Daily report',
+      text: body,
+      attachments: [],
+    });
+
+    return {
+      message: `Daily report sent to aiden@shaihukeji.com`,
+    };
+  }
   // @Cron('5 * * * *', {
   //   timeZone: 'Asia/Shanghai',
   // })

@@ -140,6 +140,7 @@ model generic_items {
   base_unit_id       Int?
   scm_goods_category scm_goods_category  @relation(fields: [category_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_goods_category0")
   standard_units     standard_units?     @relation(fields: [base_unit_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ingredient         ingredient[]
   supply_plan_items  supply_plan_items[]
 }
 
@@ -759,6 +760,7 @@ model st_food_item {
   ml_index                       Int?
   create_date                    DateTime?                        @default(now()) @db.Date
   is_package                     Boolean                          @default(false)
+  ingredient                     ingredient[]
   st_food_category               st_food_category?                @relation(fields: [category_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "st_food_item_category_id_fkey62")
   st_predict_daily_sales_details st_predict_daily_sales_details[]
   st_sales_plan_items            st_sales_plan_items[]
@@ -912,6 +914,7 @@ model standard_units {
   base_unit_id         Int?
   conversion_factor    Decimal?         @db.Decimal(12, 5)
   generic_items        generic_items[]
+  ingredient           ingredient[]
   scm_good_units       scm_good_units[]
   standard_units       standard_units?  @relation("standard_unitsTostandard_units", fields: [base_unit_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   other_standard_units standard_units[] @relation("standard_unitsTostandard_units")
@@ -1011,6 +1014,20 @@ model user_roles {
   scm_shop_account scm_shop_account @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([user_id, role_id])
+}
+
+model ingredient {
+  id              String          @id @default(dbgenerated("(uuid_generate_v4())::character varying")) @db.VarChar
+  food_item_id    String          @db.VarChar
+  generic_item_id Int
+  qty             Decimal?        @db.Decimal(12, 2)
+  base_unit_id    Int?
+  yield_pct       Decimal?        @db.Decimal(4, 2)
+  created_at      DateTime        @default(dbgenerated("(now() AT TIME ZONE 'Asia/Shanghai'::text)")) @db.Timestamp(6)
+  updated_at      DateTime        @default(dbgenerated("(now() AT TIME ZONE 'Asia/Shanghai'::text)")) @db.Timestamp(6)
+  standard_units  standard_units? @relation(fields: [base_unit_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  st_food_item    st_food_item    @relation(fields: [food_item_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  generic_items   generic_items   @relation(fields: [generic_item_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 enum pricing_strategy_type {

@@ -275,8 +275,14 @@ model inventory_count_details {
   created_at             DateTime                 @default(dbgenerated("(now() AT TIME ZONE 'Asia/Shanghai'::text)")) @db.Timestamp(6)
   updated_at             DateTime                 @default(dbgenerated("(now() AT TIME ZONE 'Asia/Shanghai'::text)")) @db.Timestamp(6)
   count_value            Decimal?                 @default(dbgenerated("round((count_qty * weighted_price), 2)")) @db.Decimal(12, 2)
+  shop_id                Int?
+  count_unit             String?                  @db.VarChar
+  base_qty_per_count     Decimal?                 @db.Decimal(12, 4)
+  count_qty_base         Decimal?                 @default(dbgenerated("(COALESCE(count_qty, (0)::numeric) * COALESCE(base_qty_per_count, (0)::numeric))")) @db.Decimal(14, 4)
+  base_unit              String?                  @db.VarChar
   inventory_count_counts inventory_count_counts[]
   inventory_count        inventory_count          @relation(fields: [inventory_count_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  scm_shop               scm_shop?                @relation(fields: [shop_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   supplier_items         supplier_items           @relation(fields: [supplier_item_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
@@ -409,6 +415,8 @@ model scm_shop {
   client_tier_id                 Int?
   open_hours                     Json?
   inventory_count                inventory_count[]
+  inventory_count_details        inventory_count_details[]
+  inventory_item_settings        inventory_item_settings[]
   plan_item_supplier_good        plan_item_supplier_good[]
   scm_shop_brand                 scm_shop_brand                   @relation(fields: [brand_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_brand_id38")
   big_org                        big_org?                         @relation(fields: [big_org_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -592,20 +600,21 @@ model shop_info_supplier {
 }
 
 model shop_item_weighted_price {
-  id               String                     @id @default(dbgenerated("(uuid_generate_v4())::character varying")) @db.VarChar
-  shop_id          Int
-  supplier_item_id String                     @db.VarChar
-  weighted_price   Decimal?                   @db.Decimal(12, 4)
-  total_qty        Decimal?                   @db.Decimal(12, 4)
-  total_value      Decimal?                   @db.Decimal(12, 4)
-  source_id        String?                    @db.VarChar
-  source_detail_id String?                    @db.VarChar
-  type             shop_item_price_event_type
-  created_at       DateTime                   @default(dbgenerated("(now() AT TIME ZONE 'Asia/Shanghai'::text)")) @db.Timestamp(6)
-  updated_at       DateTime                   @default(dbgenerated("(now() AT TIME ZONE 'Asia/Shanghai'::text)")) @db.Timestamp(6)
-  status           Int                        @default(0)
-  scm_shop         scm_shop                   @relation(fields: [shop_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  supplier_items   supplier_items             @relation(fields: [supplier_item_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id                   String                     @id @default(dbgenerated("(uuid_generate_v4())::character varying")) @db.VarChar
+  shop_id              Int
+  supplier_item_id     String                     @db.VarChar
+  total_qty            Decimal?                   @db.Decimal(12, 4)
+  total_value          Decimal?                   @db.Decimal(12, 4)
+  source_id            String?                    @db.VarChar
+  source_detail_id     String?                    @db.VarChar
+  type                 shop_item_price_event_type
+  created_at           DateTime                   @default(dbgenerated("(now() AT TIME ZONE 'Asia/Shanghai'::text)")) @db.Timestamp(6)
+  updated_at           DateTime                   @default(dbgenerated("(now() AT TIME ZONE 'Asia/Shanghai'::text)")) @db.Timestamp(6)
+  status               Int                        @default(0)
+  order_to_base_factor Decimal                    @db.Decimal(12, 4)
+  total_qty_base       Decimal?                   @default(dbgenerated("(total_qty * order_to_base_factor)")) @db.Decimal(12, 4)
+  scm_shop             scm_shop                   @relation(fields: [shop_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  supplier_items       supplier_items             @relation(fields: [supplier_item_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
@@ -1046,6 +1055,7 @@ model supplier_items {
   tier_id                    Int
   category_name              String?                    @db.VarChar(50)
   inventory_count_details    inventory_count_details[]
+  inventory_item_settings    inventory_item_settings[]
   plan_item_supplier_good    plan_item_supplier_good[]
   shop_item_weighted_price   shop_item_weighted_price[]
   supplier                   supplier?                  @relation(fields: [supplier_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_supplier_items_supplier")
@@ -1145,6 +1155,21 @@ model inventory_count_counts {
   inventory_count_details   inventory_count_details @relation(fields: [inventory_count_detail_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([inventory_count_detail_id, unit_id])
+}
+
+model inventory_item_settings {
+  id                 String         @id @default(dbgenerated("(uuid_generate_v4())::character varying")) @db.VarChar
+  shop_id            Int
+  supplier_item_id   String         @db.VarChar
+  is_count           Boolean        @default(true)
+  count_unit         String?
+  base_qty_per_count Decimal?       @db.Decimal(12, 4)
+  created_at         DateTime       @default(dbgenerated("(now() AT TIME ZONE 'Asia/Shanghai'::text)")) @db.Timestamp(6)
+  updated_at         DateTime       @default(dbgenerated("(now() AT TIME ZONE 'Asia/Shanghai'::text)")) @db.Timestamp(6)
+  scm_shop           scm_shop       @relation(fields: [shop_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  supplier_items     supplier_items @relation(fields: [supplier_item_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([shop_id, supplier_item_id])
 }
 
 enum pricing_strategy_type {

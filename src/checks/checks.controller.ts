@@ -7,8 +7,12 @@ export class ChecksController {
 
   @Get('different-orders')
   async checkDifferentOrders() {
-    await this.checksService.checkDifferentOrders();
-    return { message: 'Different orders check completed' };
+    return this.checksService.checkDifferentOrders();
+  }
+
+  @Get('daily-report')
+  async dailyReport() {
+    return this.checksService.dailyReport();
   }
 
   @Get('pricings')
@@ -25,8 +29,7 @@ export class ChecksController {
 
   @Get('delivery-qty')
   async checkDeliveryQty() {
-    await this.checksService.checkDeliveryQty();
-    return { message: 'Delivery quantity check completed' };
+    return this.checksService.checkDeliveryQty();
   }
 
   @Get('receive-qty')

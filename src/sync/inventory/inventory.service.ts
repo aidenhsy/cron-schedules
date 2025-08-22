@@ -126,7 +126,11 @@ export class InventoryService {
             },
           },
           include: {
-            supplier_order_details: true,
+            supplier_order_details: {
+              include: {
+                supplier_items: true,
+              },
+            },
           },
           skip,
           take: batchSize,
@@ -196,9 +200,12 @@ export class InventoryService {
                     updated_at: supplierOrder.receive_time,
                     shop_id: supplierOrder.shop_id,
                     type: 'order_in',
-                    weighted_price: newWeightedPrice,
                     total_qty: newTotalQty,
                     total_value: newTotalValue,
+                    order_to_base_factor: Number(
+                      supplierOrderDetail.supplier_items
+                        ?.package_unit_to_base_ratio,
+                    ),
                   },
                 },
               );
@@ -213,11 +220,14 @@ export class InventoryService {
                     updated_at: supplierOrder.receive_time,
                     shop_id: supplierOrder.shop_id,
                     type: 'order_in',
-                    weighted_price: supplierOrderDetail.price,
                     total_qty: supplierOrderDetail.final_qty,
                     total_value:
                       Number(supplierOrderDetail.price) *
                       Number(supplierOrderDetail.final_qty),
+                    order_to_base_factor: Number(
+                      supplierOrderDetail.supplier_items
+                        ?.package_unit_to_base_ratio,
+                    ),
                   },
                 },
               );
