@@ -54,13 +54,6 @@ export class ChecksService {
 
     this.logger.log('Checking different orders done');
 
-    await this.mailService.sendMail({
-      to: 'aiden@shaihukeji.com',
-      subject: 'Different orders check',
-      text: `Missing SCM orders: ${missingScmOrders.length}, Missing procurement orders: ${missingProcurementOrders.length}`,
-      attachments: [],
-    });
-
     return {
       missingScmOrders: missingScmOrders.map((order) => order.id),
       missingProcurementOrders: missingProcurementOrders.map(
@@ -160,13 +153,25 @@ export class ChecksService {
   //   timeZone: 'Asia/Shanghai',
   // })
   async checkDeliveryQty() {
-    this.logger.log('Checking delivery qty');
+    this.logger.log('Checking delivery qty (read-only)');
 
     const batchSize = 100;
     let skip = 0;
     let hasMoreOrders = true;
 
-    let report = '';
+    // Collect human-readable lines and machine-usable rows
+    const lines: string[] = [];
+    const diffs: Array<{
+      client_order_id: string;
+      reference_id: string;
+      kind: 'scm-vs-order' | 'procurement-vs-basic' | 'procurement-vs-order';
+      scm_deliver_goods_qty?: string | number | null;
+      order_deliver_qty?: string | number | null;
+      procurement_actual_delivery_qty?: string | number | null;
+    }> = [];
+
+    const toNum = (x: any) =>
+      x == null ? null : typeof x === 'number' ? x : Number(x);
 
     while (hasMoreOrders) {
       const orders =
@@ -174,32 +179,23 @@ export class ChecksService {
           select: {
             client_order_id: true,
             procurement_order_details: {
-              select: {
-                id: true,
-                reference_id: true,
-                deliver_qty: true,
-              },
+              select: { id: true, reference_id: true, deliver_qty: true },
             },
           },
           take: batchSize,
-          skip: skip,
+          skip,
+          orderBy: { id: 'asc' },
         });
 
-      if (orders.length < batchSize) {
-        hasMoreOrders = false;
-      }
+      if (orders.length < batchSize) hasMoreOrders = false;
+      if (orders.length === 0) break;
 
-      if (orders.length === 0) {
-        break;
-      }
+      const clientOrderIds = orders.map((o) => o.client_order_id);
 
+      // Bulk fetch procurement side once per batch
       const procurementOrders =
         await this.databaseService.procurement.supplier_orders.findMany({
-          where: {
-            id: {
-              in: orders.map((order) => order.client_order_id),
-            },
-          },
+          where: { id: { in: clientOrderIds } },
           select: {
             id: true,
             supplier_order_details: {
@@ -212,104 +208,131 @@ export class ChecksService {
           },
         });
 
+      const procurementDetailsByOrder = new Map<
+        string,
+        Map<
+          string,
+          {
+            id: string;
+            supplier_reference_id: string;
+            actual_delivery_qty: any;
+          }
+        >
+      >();
+      for (const po of procurementOrders) {
+        const m = new Map<string, any>();
+        for (const det of po.supplier_order_details)
+          m.set(det.supplier_reference_id, det);
+        procurementDetailsByOrder.set(po.id, m);
+      }
+
+      // Bulk fetch basic (SCM) once per batch
+      const basicRows =
+        await this.databaseService.basic.scm_order_details.findMany({
+          where: { reference_order_id: { in: clientOrderIds } },
+          select: {
+            reference_order_id: true,
+            reference_id: true,
+            deliver_goods_qty: true,
+          },
+        });
+      const basicByPair = new Map<string, { deliver_goods_qty: any }>();
+      for (const b of basicRows) {
+        basicByPair.set(`${b.reference_order_id}|${b.reference_id}`, b);
+      }
+
+      // Compare—all reads, no updates
       for (const order of orders) {
-        const procurementOrder = procurementOrders.find(
-          (o) => o.id === order.client_order_id,
-        );
+        const pDetails =
+          procurementDetailsByOrder.get(order.client_order_id) ?? new Map();
 
-        if (!procurementOrder) {
-          console.log(`${order.client_order_id} not found`);
-          continue;
-        }
-
-        for (const orderDetail of order.procurement_order_details) {
-          // get procurement detail
-          const procurementDetail =
-            procurementOrder.supplier_order_details.find(
-              (d) => d.supplier_reference_id === orderDetail.reference_id,
+        for (const od of order.procurement_order_details) {
+          const pDetail = pDetails.get(od.reference_id);
+          if (!pDetail) {
+            // Procurement detail missing—log if useful
+            lines.push(
+              `[warn] ${od.reference_id} not found in procurement; id: ${order.client_order_id}`,
             );
-          if (!procurementDetail) {
-            console.log(`${orderDetail.reference_id} not found`);
             continue;
           }
 
-          // get scm order detail
-          const basicDetail =
-            await this.databaseService.basic.scm_order_details.findFirst({
-              where: {
-                reference_order_id: order.client_order_id,
-                reference_id: orderDetail.reference_id,
-              },
-            });
+          const basic = basicByPair.get(
+            `${order.client_order_id}|${od.reference_id}`,
+          );
+          const orderQty = toNum(od.deliver_qty);
+          const procQty = toNum(pDetail.actual_delivery_qty);
 
-          if (basicDetail) {
-            if (
-              Number(basicDetail.deliver_goods_qty) !==
-              Number(orderDetail.deliver_qty)
-            ) {
-              await this.databaseService.order.procurement_order_details.update(
-                {
-                  where: {
-                    id: orderDetail.id,
-                  },
-                  data: {
-                    deliver_qty: basicDetail.deliver_goods_qty,
-                  },
-                },
-              );
-              console.log(
-                `[delivery qty] ${orderDetail.reference_id} scm-order difference ${basicDetail.deliver_goods_qty} ${orderDetail.deliver_qty} \n id: ${order.client_order_id} \n `,
-              );
-              console.log('-----------');
-              report += `[delivery qty] ${orderDetail.reference_id} scm-order difference ${basicDetail.deliver_goods_qty} ${orderDetail.deliver_qty} \n id: ${order.client_order_id} \n `;
-            }
-            if (
-              Number(procurementDetail.actual_delivery_qty) !==
-              Number(basicDetail.deliver_goods_qty)
-            ) {
-              await this.databaseService.procurement.supplier_order_details.update(
-                {
-                  where: {
-                    id: procurementDetail.id,
-                  },
-                  data: {
-                    actual_delivery_qty: basicDetail.deliver_goods_qty,
-                  },
-                },
-              );
-            }
-          }
+          if (basic) {
+            const basicQty = toNum(basic.deliver_goods_qty);
 
-          // if basic detail not found, update procurement detail
-          if (
-            Number(procurementDetail.actual_delivery_qty) !==
-            Number(orderDetail.deliver_qty)
-          ) {
-            await this.databaseService.procurement.supplier_order_details.update(
-              {
-                where: {
-                  id: procurementDetail.id,
-                },
-                data: {
-                  actual_delivery_qty: orderDetail.deliver_qty,
-                },
-              },
-            );
-            console.log(
-              `[delivery qty] ${orderDetail.reference_id} procurement-order difference ${procurementDetail.actual_delivery_qty} ${orderDetail.deliver_qty} \n id: ${order.client_order_id} \n `,
-            );
-            console.log('-----------');
-            report += `[delivery qty] ${orderDetail.reference_id} procurement-order difference ${procurementDetail.actual_delivery_qty} ${orderDetail.deliver_qty} \n id: ${order.client_order_id} \n `;
+            // SCM vs ORDER
+            if (basicQty !== orderQty) {
+              lines.push(
+                `[delivery qty] ${od.reference_id} scm-order difference ${basic.deliver_goods_qty} ${od.deliver_qty} \n id: ${order.client_order_id}`,
+              );
+              diffs.push({
+                client_order_id: order.client_order_id,
+                reference_id: od.reference_id!,
+                kind: 'scm-vs-order',
+                scm_deliver_goods_qty: basic.deliver_goods_qty,
+                order_deliver_qty: Number(od.deliver_qty),
+              });
+            }
+
+            // PROCUREMENT vs BASIC
+            if (procQty !== basicQty) {
+              lines.push(
+                `[delivery qty] ${od.reference_id} procurement-basic difference ${pDetail.actual_delivery_qty} ${basic.deliver_goods_qty} \n id: ${order.client_order_id}`,
+              );
+              diffs.push({
+                client_order_id: order.client_order_id,
+                reference_id: od.reference_id!,
+                kind: 'procurement-vs-basic',
+                procurement_actual_delivery_qty: pDetail.actual_delivery_qty,
+                scm_deliver_goods_qty: basic.deliver_goods_qty,
+              });
+            }
+          } else {
+            // No SCM row → compare PROCUREMENT vs ORDER
+            if (procQty !== orderQty) {
+              lines.push(
+                `[delivery qty] ${od.reference_id} procurement-order difference ${pDetail.actual_delivery_qty} ${od.deliver_qty} \n id: ${order.client_order_id}`,
+              );
+              diffs.push({
+                client_order_id: order.client_order_id,
+                reference_id: od.reference_id!,
+                kind: 'procurement-vs-order',
+                procurement_actual_delivery_qty: pDetail.actual_delivery_qty,
+                order_deliver_qty: Number(od.deliver_qty),
+              });
+            }
           }
         }
       }
 
-      // Move to the next batch
-      skip += batchSize;
+      skip += batchSize; // next batch
     }
 
     this.logger.log('Checking delivery qty done');
-    return { report };
+
+    // You can return both a printable report and structured data
+    const report = lines.join('\n');
+    return {
+      report,
+      summary: {
+        total_diffs: diffs.length,
+        by_kind: {
+          scm_vs_order: diffs.filter((d) => d.kind === 'scm-vs-order').length,
+          procurement_vs_basic: diffs.filter(
+            (d) => d.kind === 'procurement-vs-basic',
+          ).length,
+          procurement_vs_order: diffs.filter(
+            (d) => d.kind === 'procurement-vs-order',
+          ).length,
+        },
+      },
+      diffs, // keep for downstream export if you need it
+    };
   }
 
   async dailyReport() {
@@ -331,7 +354,7 @@ export class ChecksService {
 
     await this.mailService.sendMail({
       to: 'aiden@shaihukeji.com',
-      subject: 'Daily report',
+      subject: 'Daily reports',
       text: body,
       attachments: [],
     });
