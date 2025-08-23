@@ -317,7 +317,7 @@ export class ChecksService {
 
     const { summary, orders } = await this.checkDeliveryQty();
 
-    // build summary section
+    // summary section
     const summarySection = `
   📊 Daily Report
   
@@ -325,23 +325,21 @@ export class ChecksService {
     • SCM orders: ${missingScmOrders.length}
     • Procurement orders: ${missingProcurementOrders.length}
   
-  Delivery Qty Mismatch Summary:
-    • Total orders with mismatches: ${summary.total_orders_with_diffs}
+  Delivery Qty Mismatch:
+    • Orders with mismatches: ${summary.total_orders_with_diffs}
     • scm-vs-order: ${summary.total_scm_vs_order}
     • procurement-vs-basic: ${summary.total_procurement_vs_basic}
     • procurement-vs-order: ${summary.total_procurement_vs_order}
   `.trim();
 
-    // build per-order detail section
+    // per-order section (only client_order_id and counts)
     const ordersSection =
       orders.length > 0
-        ? `\n\nDetailed Orders:\n` +
+        ? `\n\nOrders with mismatches:\n` +
           orders
             .map(
               (o) =>
-                `- ${o.client_order_id} [${o.type}] (sent: ${
-                  o.sent_time?.toISOString().split('T')[0] ?? 'n/a'
-                })\n` +
+                `- ${o.client_order_id}\n` +
                 `    scm-vs-order: ${o.scm_vs_order}, procurement-vs-basic: ${o.procurement_vs_basic}, procurement-vs-order: ${o.procurement_vs_order}`,
             )
             .join('\n\n')
@@ -351,7 +349,7 @@ export class ChecksService {
 
     await this.mailService.sendMail({
       to: 'aiden@shaihukeji.com',
-      subject: 'Daily reports',
+      subject: 'Daily Report',
       text: body,
       attachments: [],
     });
