@@ -159,15 +159,14 @@ export class ChecksService {
     let skip = 0;
     let hasMoreOrders = true;
 
-    // Collect human-readable lines and machine-usable rows
-    const lines: string[] = [];
-    const diffs: Array<{
+    // One summary object per order
+    const orderSummaries: Array<{
       client_order_id: string;
-      reference_id: string;
-      kind: 'scm-vs-order' | 'procurement-vs-basic' | 'procurement-vs-order';
-      scm_deliver_goods_qty?: string | number | null;
-      order_deliver_qty?: string | number | null;
-      procurement_actual_delivery_qty?: string | number | null;
+      type: string | null;
+      sent_time: Date | null;
+      scm_vs_order: number;
+      procurement_vs_basic: number;
+      procurement_vs_order: number;
     }> = [];
 
     const toNum = (x: any) =>
@@ -177,10 +176,15 @@ export class ChecksService {
       const orders =
         await this.databaseService.order.procurement_orders.findMany({
           select: {
+            sent_time: true,
+            type: true,
             client_order_id: true,
             procurement_order_details: {
-              select: { id: true, reference_id: true, deliver_qty: true },
+              select: { reference_id: true, deliver_qty: true },
             },
+          },
+          where: {
+            status: { in: [3, 4, 5, 20] },
           },
           take: batchSize,
           skip,
@@ -192,7 +196,7 @@ export class ChecksService {
 
       const clientOrderIds = orders.map((o) => o.client_order_id);
 
-      // Bulk fetch procurement side once per batch
+      // Bulk fetch procurement
       const procurementOrders =
         await this.databaseService.procurement.supplier_orders.findMany({
           where: { id: { in: clientOrderIds } },
@@ -200,7 +204,6 @@ export class ChecksService {
             id: true,
             supplier_order_details: {
               select: {
-                id: true,
                 supplier_reference_id: true,
                 actual_delivery_qty: true,
               },
@@ -210,23 +213,17 @@ export class ChecksService {
 
       const procurementDetailsByOrder = new Map<
         string,
-        Map<
-          string,
-          {
-            id: string;
-            supplier_reference_id: string;
-            actual_delivery_qty: any;
-          }
-        >
+        Map<string, { actual_delivery_qty: any }>
       >();
       for (const po of procurementOrders) {
         const m = new Map<string, any>();
-        for (const det of po.supplier_order_details)
+        for (const det of po.supplier_order_details) {
           m.set(det.supplier_reference_id, det);
+        }
         procurementDetailsByOrder.set(po.id, m);
       }
 
-      // Bulk fetch basic (SCM) once per batch
+      // Bulk fetch basic
       const basicRows =
         await this.databaseService.basic.scm_order_details.findMany({
           where: { reference_order_id: { in: clientOrderIds } },
@@ -241,20 +238,18 @@ export class ChecksService {
         basicByPair.set(`${b.reference_order_id}|${b.reference_id}`, b);
       }
 
-      // Compare—all reads, no updates
+      // Compare per order
       for (const order of orders) {
+        let scmVsOrder = 0;
+        let procurementVsBasic = 0;
+        let procurementVsOrder = 0;
+
         const pDetails =
           procurementDetailsByOrder.get(order.client_order_id) ?? new Map();
 
         for (const od of order.procurement_order_details) {
           const pDetail = pDetails.get(od.reference_id);
-          if (!pDetail) {
-            // Procurement detail missing—log if useful
-            lines.push(
-              `[warn] ${od.reference_id} not found in procurement; id: ${order.client_order_id}`,
-            );
-            continue;
-          }
+          if (!pDetail) continue;
 
           const basic = basicByPair.get(
             `${order.client_order_id}|${od.reference_id}`,
@@ -265,73 +260,54 @@ export class ChecksService {
           if (basic) {
             const basicQty = toNum(basic.deliver_goods_qty);
 
-            // SCM vs ORDER
-            if (basicQty !== orderQty) {
-              lines.push(
-                `[delivery qty] ${od.reference_id} scm-order difference ${basic.deliver_goods_qty} ${od.deliver_qty} \n id: ${order.client_order_id}`,
-              );
-              diffs.push({
-                client_order_id: order.client_order_id,
-                reference_id: od.reference_id!,
-                kind: 'scm-vs-order',
-                scm_deliver_goods_qty: basic.deliver_goods_qty,
-                order_deliver_qty: Number(od.deliver_qty),
-              });
-            }
-
-            // PROCUREMENT vs BASIC
-            if (procQty !== basicQty) {
-              lines.push(
-                `[delivery qty] ${od.reference_id} procurement-basic difference ${pDetail.actual_delivery_qty} ${basic.deliver_goods_qty} \n id: ${order.client_order_id}`,
-              );
-              diffs.push({
-                client_order_id: order.client_order_id,
-                reference_id: od.reference_id!,
-                kind: 'procurement-vs-basic',
-                procurement_actual_delivery_qty: pDetail.actual_delivery_qty,
-                scm_deliver_goods_qty: basic.deliver_goods_qty,
-              });
-            }
+            if (basicQty !== orderQty) scmVsOrder++;
+            if (procQty !== basicQty) procurementVsBasic++;
           } else {
-            // No SCM row → compare PROCUREMENT vs ORDER
-            if (procQty !== orderQty) {
-              lines.push(
-                `[delivery qty] ${od.reference_id} procurement-order difference ${pDetail.actual_delivery_qty} ${od.deliver_qty} \n id: ${order.client_order_id}`,
-              );
-              diffs.push({
-                client_order_id: order.client_order_id,
-                reference_id: od.reference_id!,
-                kind: 'procurement-vs-order',
-                procurement_actual_delivery_qty: pDetail.actual_delivery_qty,
-                order_deliver_qty: Number(od.deliver_qty),
-              });
-            }
+            if (procQty !== orderQty) procurementVsOrder++;
           }
+        }
+
+        if (scmVsOrder || procurementVsBasic || procurementVsOrder) {
+          orderSummaries.push({
+            client_order_id: order.client_order_id,
+            type: order.type.toString(),
+            sent_time: order.sent_time,
+            scm_vs_order: scmVsOrder,
+            procurement_vs_basic: procurementVsBasic,
+            procurement_vs_order: procurementVsOrder,
+          });
         }
       }
 
-      skip += batchSize; // next batch
+      skip += batchSize;
     }
 
     this.logger.log('Checking delivery qty done');
 
-    // You can return both a printable report and structured data
-    const report = lines.join('\n');
+    // Make a simple report string for your email
+    const reportLines = orderSummaries.map((o) => {
+      return `- Order ${o.client_order_id} [${o.type}] (sent: ${o.sent_time?.toISOString() ?? 'n/a'})  
+        scm-vs-order: ${o.scm_vs_order}, procurement-vs-basic: ${o.procurement_vs_basic}, procurement-vs-order: ${o.procurement_vs_order}`;
+    });
+
     return {
-      report,
+      report: reportLines.join('\n\n'),
       summary: {
-        total_diffs: diffs.length,
-        by_kind: {
-          scm_vs_order: diffs.filter((d) => d.kind === 'scm-vs-order').length,
-          procurement_vs_basic: diffs.filter(
-            (d) => d.kind === 'procurement-vs-basic',
-          ).length,
-          procurement_vs_order: diffs.filter(
-            (d) => d.kind === 'procurement-vs-order',
-          ).length,
-        },
+        total_orders_with_diffs: orderSummaries.length,
+        total_scm_vs_order: orderSummaries.reduce(
+          (s, o) => s + o.scm_vs_order,
+          0,
+        ),
+        total_procurement_vs_basic: orderSummaries.reduce(
+          (s, o) => s + o.procurement_vs_basic,
+          0,
+        ),
+        total_procurement_vs_order: orderSummaries.reduce(
+          (s, o) => s + o.procurement_vs_order,
+          0,
+        ),
       },
-      diffs, // keep for downstream export if you need it
+      orders: orderSummaries,
     };
   }
 
@@ -339,18 +315,39 @@ export class ChecksService {
     const { missingScmOrders, missingProcurementOrders } =
       await this.checkDifferentOrders();
 
-    const { report } = await this.checkDeliveryQty();
+    const { summary, orders } = await this.checkDeliveryQty();
 
-    const body = `
+    // build summary section
+    const summarySection = `
   📊 Daily Report
   
-    Missing Orders:
-    SCM orders: ${missingScmOrders.length}
-    Procurement orders: ${missingProcurementOrders.length}
+  Missing Orders:
+    • SCM orders: ${missingScmOrders.length}
+    • Procurement orders: ${missingProcurementOrders.length}
   
-    Delivery Qty Mismatch:
-    ${report}
-    `.trim();
+  Delivery Qty Mismatch Summary:
+    • Total orders with mismatches: ${summary.total_orders_with_diffs}
+    • scm-vs-order: ${summary.total_scm_vs_order}
+    • procurement-vs-basic: ${summary.total_procurement_vs_basic}
+    • procurement-vs-order: ${summary.total_procurement_vs_order}
+  `.trim();
+
+    // build per-order detail section
+    const ordersSection =
+      orders.length > 0
+        ? `\n\nDetailed Orders:\n` +
+          orders
+            .map(
+              (o) =>
+                `- ${o.client_order_id} [${o.type}] (sent: ${
+                  o.sent_time?.toISOString().split('T')[0] ?? 'n/a'
+                })\n` +
+                `    scm-vs-order: ${o.scm_vs_order}, procurement-vs-basic: ${o.procurement_vs_basic}, procurement-vs-order: ${o.procurement_vs_order}`,
+            )
+            .join('\n\n')
+        : `\n\nNo mismatches found 🎉`;
+
+    const body = summarySection + ordersSection;
 
     await this.mailService.sendMail({
       to: 'aiden@shaihukeji.com',
