@@ -27,6 +27,7 @@
     "db:all": "npm run db:procurement && npm run db:imbasic && npm run db:inventory && npm run db:scmbasic && npm run db:scmorder && npm run db:scmpricing"
   },
   "dependencies": {
+    "@golevelup/nestjs-rabbitmq": "^6.0.2",
     "@nestjs-modules/mailer": "^2.0.2",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",

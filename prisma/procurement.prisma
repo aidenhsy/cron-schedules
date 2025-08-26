@@ -1149,10 +1149,18 @@ model supplier_order_returns {
   note                          String?
   created_at                    DateTime                        @default(dbgenerated("(now() AT TIME ZONE 'Asia/Shanghai'::text)")) @db.Timestamp(6)
   updated_at                    DateTime                        @default(dbgenerated("(now() AT TIME ZONE 'Asia/Shanghai'::text)")) @db.Timestamp(6)
+  return_reason_id              Int
   supplier_order_return_details supplier_order_return_details[]
   supplier_orders               supplier_orders                 @relation(fields: [original_order_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  supplier_order_return_reasons supplier_order_return_reasons   @relation(fields: [return_reason_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   scm_shop                      scm_shop                        @relation(fields: [shop_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   supplier                      supplier                        @relation(fields: [supplier_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model supplier_order_return_reasons {
+  id                     Int                      @id
+  name                   String?                  @db.VarChar
+  supplier_order_returns supplier_order_returns[]
 }
 
 enum pricing_strategy_type {

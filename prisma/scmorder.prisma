@@ -17,18 +17,19 @@ model cities {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model client_organizations {
-  id                                                             Int                    @id @default(autoincrement())
-  organization_name                                              String?                @db.VarChar(50)
+  id                                                             Int                         @id @default(autoincrement())
+  organization_name                                              String?                     @db.VarChar(50)
   tier_id                                                        Int?
   organization_type                                              Json?
-  access_id                                                      String?                @db.VarChar
-  access_secret                                                  String?                @db.VarChar
-  callback_url                                                   String?                @db.VarChar
-  client_tier                                                    client_tier?           @relation(fields: [tier_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_tier_id")
+  access_id                                                      String?                     @db.VarChar
+  access_secret                                                  String?                     @db.VarChar
+  callback_url                                                   String?                     @db.VarChar
+  client_tier                                                    client_tier?                @relation(fields: [tier_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_tier_id")
   private_client_goods                                           private_client_goods[]
+  procurement_order_returns                                      procurement_order_returns[]
   scm_order                                                      scm_order[]
-  scm_shop_scm_shop_client_organization_idToclient_organizations scm_shop[]             @relation("scm_shop_client_organization_idToclient_organizations")
-  scm_shop_scm_shop_organization_idToclient_organizations        scm_shop[]             @relation("scm_shop_organization_idToclient_organizations")
+  scm_shop_scm_shop_client_organization_idToclient_organizations scm_shop[]                  @relation("scm_shop_client_organization_idToclient_organizations")
+  scm_shop_scm_shop_organization_idToclient_organizations        scm_shop[]                  @relation("scm_shop_organization_idToclient_organizations")
   supplier                                                       supplier[]
   users                                                          users[]
   users_organizations                                            users_organizations[]
@@ -93,27 +94,28 @@ model private_client_goods {
 }
 
 model procurement_order_details {
-  id                    String             @id @default(dbgenerated("(uuid_generate_v4())::character varying")) @db.VarChar
-  name                  String?            @db.VarChar
-  reference_id          String?            @db.VarChar
-  order_qty             Decimal?           @db.Decimal(12, 4)
-  price                 Decimal?           @db.Decimal(12, 4)
-  cut_off_time          String?            @db.VarChar
-  order_id              String             @db.VarChar
-  created_at            DateTime?          @default(dbgenerated("(now() AT TIME ZONE 'Asia/Shanghai'::text)")) @db.Timestamp(6)
-  updated_at            DateTime?          @default(dbgenerated("(now() AT TIME ZONE 'Asia/Shanghai'::text)")) @db.Timestamp(6)
-  deliver_qty           Decimal?           @db.Decimal(12, 4)
-  customer_receive_qty  Decimal?           @db.Decimal(12, 4)
-  good_id               Int?
-  unit_id               String?            @db.VarChar
-  pricing_id            String?            @db.VarChar
-  final_qty             Decimal?           @db.Decimal(12, 4)
-  weighted_average_cost Decimal?           @db.Decimal(12, 4)
-  total_cost_amount     Decimal?           @default(dbgenerated("round((final_qty * weighted_average_cost), 2)")) @db.Decimal(12, 2)
-  total_sale_amount     Decimal?           @default(dbgenerated("round((final_qty * price), 2)")) @db.Decimal(12, 2)
-  is_locked             Boolean            @default(false)
-  is_checked            Boolean            @default(false)
-  procurement_orders    procurement_orders @relation(fields: [order_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id                               String                             @id @default(dbgenerated("(uuid_generate_v4())::character varying")) @db.VarChar
+  name                             String?                            @db.VarChar
+  reference_id                     String?                            @db.VarChar
+  order_qty                        Decimal?                           @db.Decimal(12, 4)
+  price                            Decimal?                           @db.Decimal(12, 4)
+  cut_off_time                     String?                            @db.VarChar
+  order_id                         String                             @db.VarChar
+  created_at                       DateTime?                          @default(dbgenerated("(now() AT TIME ZONE 'Asia/Shanghai'::text)")) @db.Timestamp(6)
+  updated_at                       DateTime?                          @default(dbgenerated("(now() AT TIME ZONE 'Asia/Shanghai'::text)")) @db.Timestamp(6)
+  deliver_qty                      Decimal?                           @db.Decimal(12, 4)
+  customer_receive_qty             Decimal?                           @db.Decimal(12, 4)
+  good_id                          Int?
+  unit_id                          String?                            @db.VarChar
+  pricing_id                       String?                            @db.VarChar
+  final_qty                        Decimal?                           @db.Decimal(12, 4)
+  weighted_average_cost            Decimal?                           @db.Decimal(12, 4)
+  total_cost_amount                Decimal?                           @default(dbgenerated("round((final_qty * weighted_average_cost), 2)")) @db.Decimal(12, 2)
+  total_sale_amount                Decimal?                           @default(dbgenerated("round((final_qty * price), 2)")) @db.Decimal(12, 2)
+  is_locked                        Boolean                            @default(false)
+  is_checked                       Boolean                            @default(false)
+  procurement_orders               procurement_orders                 @relation(fields: [order_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  procurement_order_return_details procurement_order_return_details[]
 
   @@unique([reference_id, order_id], map: "unique_reference_order")
   @@index([reference_id], map: "idx_procurement_order_details_reference_id")
@@ -149,6 +151,7 @@ model procurement_orders {
   sent_time                        DateTime?                          @db.Timestamp(6)
   estimated_delivery_time          DateTime?                          @db.Timestamp(6)
   procurement_order_details        procurement_order_details[]
+  procurement_order_returns        procurement_order_returns[]
   procurement_order_status_history procurement_order_status_history[]
 }
 
@@ -922,38 +925,39 @@ model scm_sender_mail_log {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model scm_shop {
-  shop_name                                                                  String                 @db.VarChar(60)
-  serial_num                                                                 String?                @db.VarChar(60)
-  address                                                                    String?                @db.VarChar(200)
-  longitude                                                                  String?                @db.VarChar(60)
-  latitude                                                                   String?                @db.VarChar(60)
-  create_time                                                                DateTime?              @db.Timestamp(6)
-  brand_id                                                                   Int                    @db.SmallInt
-  status                                                                     Int                    @default(1) @db.SmallInt
-  id                                                                         Int                    @id @default(autoincrement())
-  serial_num2                                                                String?                @db.VarChar
+  shop_name                                                                  String                      @db.VarChar(60)
+  serial_num                                                                 String?                     @db.VarChar(60)
+  address                                                                    String?                     @db.VarChar(200)
+  longitude                                                                  String?                     @db.VarChar(60)
+  latitude                                                                   String?                     @db.VarChar(60)
+  create_time                                                                DateTime?                   @db.Timestamp(6)
+  brand_id                                                                   Int                         @db.SmallInt
+  status                                                                     Int                         @default(1) @db.SmallInt
+  id                                                                         Int                         @id @default(autoincrement())
+  serial_num2                                                                String?                     @db.VarChar
   business_id                                                                Int?
-  field                                                                      Int?                   @default(0) @db.SmallInt
-  field_order                                                                Int?                   @default(0) @db.SmallInt
-  is_join                                                                    Int?                   @default(0) @db.SmallInt
-  tc_shop_id                                                                 Int?                   @default(0)
+  field                                                                      Int?                        @default(0) @db.SmallInt
+  field_order                                                                Int?                        @default(0) @db.SmallInt
+  is_join                                                                    Int?                        @default(0) @db.SmallInt
+  tc_shop_id                                                                 Int?                        @default(0)
   city_id                                                                    Int?
-  ingredient_type_id                                                         String?                @db.VarChar
-  model_url                                                                  String?                @db.VarChar
-  automatic_receiving                                                        Int                    @default(1) @db.SmallInt
-  is_enabled                                                                 Boolean?               @default(true)
-  sales_plan_id                                                              String?                @db.VarChar
+  ingredient_type_id                                                         String?                     @db.VarChar
+  model_url                                                                  String?                     @db.VarChar
+  automatic_receiving                                                        Int                         @default(1) @db.SmallInt
+  is_enabled                                                                 Boolean?                    @default(true)
+  sales_plan_id                                                              String?                     @db.VarChar
   client_tier_id                                                             Int?
   client_organization_id                                                     Int?
   organization_id                                                            Int?
   picker_client_shop                                                         picker_client_shop[]
+  procurement_order_returns                                                  procurement_order_returns[]
   scm_order                                                                  scm_order[]
-  scm_shop_brand                                                             scm_shop_brand         @relation(fields: [brand_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_brand_id38")
-  scm_business_district                                                      scm_business_district? @relation(fields: [business_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_shop_business_id")
-  client_organizations_scm_shop_client_organization_idToclient_organizations client_organizations?  @relation("scm_shop_client_organization_idToclient_organizations", fields: [client_organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  scm_shop                                                                   scm_shop?              @relation("scm_shopToscm_shop", fields: [client_tier_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  other_scm_shop                                                             scm_shop[]             @relation("scm_shopToscm_shop")
-  client_organizations_scm_shop_organization_idToclient_organizations        client_organizations?  @relation("scm_shop_organization_idToclient_organizations", fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  scm_shop_brand                                                             scm_shop_brand              @relation(fields: [brand_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_brand_id38")
+  scm_business_district                                                      scm_business_district?      @relation(fields: [business_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_shop_business_id")
+  client_organizations_scm_shop_client_organization_idToclient_organizations client_organizations?       @relation("scm_shop_client_organization_idToclient_organizations", fields: [client_organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  scm_shop                                                                   scm_shop?                   @relation("scm_shopToscm_shop", fields: [client_tier_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  other_scm_shop                                                             scm_shop[]                  @relation("scm_shopToscm_shop")
+  client_organizations_scm_shop_organization_idToclient_organizations        client_organizations?       @relation("scm_shop_organization_idToclient_organizations", fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   user_client_shop                                                           user_client_shop[]
 }
 
@@ -1279,6 +1283,62 @@ model users_organizations {
   users                users?               @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([user_id, organization_id])
+}
+
+model outbox_events {
+  id             String    @id @default(dbgenerated("(uuid_generate_v4())::character varying")) @db.VarChar
+  aggregate_type String    @db.VarChar(255)
+  aggregate_id   String    @db.VarChar(255)
+  event_type     String    @db.VarChar(255)
+  payload        Json
+  created_at     DateTime  @default(dbgenerated("(now() AT TIME ZONE 'Asia/Shanghai'::text)")) @db.Timestamp(6)
+  updated_at     DateTime  @default(dbgenerated("(now() AT TIME ZONE 'Asia/Shanghai'::text)")) @db.Timestamp(6)
+  processed_at   DateTime? @db.Timestamp(6)
+  published_at   DateTime? @db.Timestamp(6)
+  retry_count    Int       @default(0)
+}
+
+model procurement_order_return_details {
+  id                        String                    @id @default(dbgenerated("(uuid_generate_v4())::character varying")) @db.VarChar
+  return_id                 String                    @db.VarChar
+  good_id                   Int
+  good_name                 String                    @db.VarChar
+  source_detail_id          String                    @db.VarChar
+  qty_returned              Decimal                   @db.Decimal(12, 4)
+  unit_price                Decimal                   @db.Decimal(12, 2)
+  total_value               Decimal?                  @default(dbgenerated("(qty_returned * unit_price)")) @db.Decimal(12, 2)
+  created_at                DateTime                  @default(dbgenerated("(now() AT TIME ZONE 'Asia/Shanghai'::text)")) @db.Timestamp(6)
+  updated_at                DateTime                  @default(dbgenerated("(now() AT TIME ZONE 'Asia/Shanghai'::text)")) @db.Timestamp(6)
+  procurement_order_returns procurement_order_returns @relation(fields: [return_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  procurement_order_details procurement_order_details @relation(fields: [source_detail_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model procurement_order_return_status_history {
+  id                        String                    @id @default(dbgenerated("(uuid_generate_v4())::character varying")) @db.VarChar
+  return_id                 String                    @db.VarChar
+  status                    Int
+  try_count                 Int                       @default(0)
+  notified_at               DateTime?                 @db.Timestamp(6)
+  created_at                DateTime                  @default(dbgenerated("(now() AT TIME ZONE 'Asia/Shanghai'::text)")) @db.Timestamp(6)
+  updated_at                DateTime                  @default(dbgenerated("(now() AT TIME ZONE 'Asia/Shanghai'::text)")) @db.Timestamp(6)
+  procurement_order_returns procurement_order_returns @relation(fields: [return_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model procurement_order_returns {
+  id                                      String                                    @id @default(dbgenerated("(uuid_generate_v4())::character varying")) @db.VarChar
+  client_id                               Int
+  shop_id                                 Int
+  original_order_id                       String                                    @db.VarChar
+  status                                  Int                                       @default(0)
+  note                                    String?
+  client_return_id                        String?                                   @db.VarChar
+  created_at                              DateTime                                  @default(dbgenerated("(now() AT TIME ZONE 'Asia/Shanghai'::text)")) @db.Timestamp(6)
+  updated_at                              DateTime                                  @default(dbgenerated("(now() AT TIME ZONE 'Asia/Shanghai'::text)")) @db.Timestamp(6)
+  procurement_order_return_details        procurement_order_return_details[]
+  procurement_order_return_status_history procurement_order_return_status_history[]
+  client_organizations                    client_organizations                      @relation(fields: [client_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  procurement_orders                      procurement_orders                        @relation(fields: [original_order_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  scm_shop                                scm_shop                                  @relation(fields: [shop_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 enum pricing_strategy_type {
