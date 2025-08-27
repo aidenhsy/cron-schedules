@@ -16,4 +16,10 @@ export class BasicDataController {
   async getShops(@Query('pageNo') pageNo: number) {
     return this.basicDataService.getShops(pageNo);
   }
+
+  // 品项分类信息
+  @Get('getitemcategoryinfo')
+  async getItemCategoryInfo(@Query('pageNo') pageNo: number) {
+    return this.basicDataService.getItemCategoryInfo(pageNo);
+  }
 }
