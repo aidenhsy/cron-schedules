@@ -18,7 +18,8 @@
       npx prisma generate --schema=prisma/scmbasic.prisma && \
       npx prisma generate --schema=prisma/procurement.prisma && \
       npx prisma generate --schema=prisma/scmpricing.prisma && \
-      npx prisma generate --schema=prisma/inventory.prisma
+      npx prisma generate --schema=prisma/inventory.prisma && \
+      npm run dev:all
   
   # 5️⃣ Build app
   RUN npm run build
