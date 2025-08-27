@@ -81,6 +81,14 @@ export class OrderService {
             is_locked: true,
           },
         });
+        await this.databaseService.procurement.supplier_orders.update({
+          where: {
+            id: aggregateId,
+          },
+          data: {
+            status: 4,
+          },
+        });
         await this.databaseService.order.procurement_order_details.update({
           where: {
             id: detail.id,
@@ -90,6 +98,14 @@ export class OrderService {
             customer_receive_qty: basicDetail.delivery_qty,
             final_qty: basicDetail.delivery_qty,
             is_locked: true,
+          },
+        });
+        await this.databaseService.order.procurement_orders.update({
+          where: {
+            id: payload.id,
+          },
+          data: {
+            status: 4,
           },
         });
       }
