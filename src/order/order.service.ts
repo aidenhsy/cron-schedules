@@ -1,6 +1,5 @@
 import { RabbitSubscribe } from '@golevelup/nestjs-rabbitmq';
 import { Injectable, Logger } from '@nestjs/common';
-import { getCurrentChinaTime } from '@saihu/common';
 import { DatabaseService } from 'src/database/database.service';
 import { RabbitmqService } from 'src/rabbitmq/rabbitmq.service';
 
@@ -21,42 +20,32 @@ export class OrderService {
   async finishOrder(msg: { id: string; aggregateId: string; payload: any }) {
     const { id, aggregateId, payload } = msg;
 
-    // Add idempotency check - if already processed, skip
+    // Idempotency check
     const existingProcessedMessage =
       await this.databaseService.order.procurement_orders.findFirst({
-        where: {
-          id: payload.id,
-          status: 4, // Already processed status
-        },
+        where: { id: payload.id, status: 4 },
       });
-
     if (existingProcessedMessage) {
-      this.logger.warn(
-        `Order ${payload.id} already processed, skipping duplicate message`,
-      );
+      this.logger.warn(`Order ${payload.id} already processed, skipping`);
       return;
     }
 
     const procurementDetailsCount =
       await this.databaseService.procurement.supplier_order_details.count({
-        where: {
-          order_id: aggregateId,
-        },
+        where: { order_id: aggregateId },
       });
 
     const basicDetailsCount =
       await this.databaseService.basic.scm_order_details.count({
-        where: {
-          reference_order_id: aggregateId,
-        },
+        where: { reference_order_id: aggregateId },
       });
 
     if (
-      Number(payload.procurement_order_details.length) ===
-        Number(basicDetailsCount) &&
-      Number(payload.procurement_order_details.length) ===
-        Number(procurementDetailsCount)
+      payload.procurement_order_details.length === basicDetailsCount &&
+      payload.procurement_order_details.length === procurementDetailsCount
     ) {
+      let allSucceeded = true; // <--- track if all updates succeeded
+
       for (const detail of payload.procurement_order_details) {
         const basicDetail =
           await this.databaseService.basic.scm_order_details.findFirst({
@@ -66,11 +55,11 @@ export class OrderService {
             },
           });
         if (!basicDetail) {
-          this.logger.error('Basic detail not found', {
-            detail,
-          });
-          return;
+          this.logger.error('Basic detail not found', { detail });
+          allSucceeded = false;
+          continue; // <--- skip this item, don't abort loop
         }
+
         const imSupplierOrderDetail =
           await this.databaseService.procurement.supplier_order_details.findFirst(
             {
@@ -81,16 +70,16 @@ export class OrderService {
             },
           );
         if (!imSupplierOrderDetail) {
-          this.logger.error('im procurement order detail not found', {
+          this.logger.error('IM procurement order detail not found', {
             detail,
           });
-          return;
+          allSucceeded = false;
+          continue; // <--- skip this item
         }
+
         try {
           await this.databaseService.procurement.supplier_order_details.update({
-            where: {
-              id: imSupplierOrderDetail.id,
-            },
+            where: { id: imSupplierOrderDetail.id },
             data: {
               actual_delivery_qty: basicDetail.delivery_qty,
               confirm_delivery_qty: basicDetail.delivery_qty,
@@ -98,24 +87,23 @@ export class OrderService {
               is_locked: true,
             },
           });
-        } catch (error) {
-          // Skip if record is already locked
+        } catch (error: any) {
           if (
             error.message &&
             error.message.includes('is locked; UPDATE is not allowed')
           ) {
             this.logger.warn(
-              `Skipping update for locked supplier_order_details record: ${imSupplierOrderDetail.id}`,
+              `Skipping locked supplier_order_details record: ${imSupplierOrderDetail.id}`,
             );
             continue;
           }
-          throw error;
+          allSucceeded = false;
+          continue;
         }
+
         try {
           await this.databaseService.order.procurement_order_details.update({
-            where: {
-              id: detail.id,
-            },
+            where: { id: detail.id },
             data: {
               deliver_qty: basicDetail.delivery_qty,
               customer_receive_qty: basicDetail.delivery_qty,
@@ -123,40 +111,38 @@ export class OrderService {
               is_locked: true,
             },
           });
-        } catch (error) {
-          // Skip if record is already locked
+        } catch (error: any) {
           if (
             error.message &&
             error.message.includes('is locked; UPDATE is not allowed')
           ) {
             this.logger.warn(
-              `Skipping update for locked procurement_order_details record: ${detail.id}`,
+              `Skipping locked procurement_order_details record: ${detail.id}`,
             );
             continue;
           }
-          throw error;
+          allSucceeded = false;
+          continue;
         }
       }
-      await this.databaseService.procurement.supplier_orders.update({
-        where: {
-          id: aggregateId,
-        },
-        data: {
-          status: 4,
-        },
-      });
-      await this.databaseService.order.procurement_orders.update({
-        where: {
-          id: payload.id,
-        },
-        data: {
-          status: 4,
-        },
-      });
+
+      // ✅ Only close orders if ALL details succeeded
+      if (allSucceeded) {
+        await this.databaseService.procurement.supplier_orders.update({
+          where: { id: aggregateId },
+          data: { status: 4 },
+        });
+        await this.databaseService.order.procurement_orders.update({
+          where: { id: payload.id },
+          data: { status: 4 },
+        });
+      } else {
+        this.logger.error(
+          `Not all details succeeded for order ${payload.id}, status not set to 4`,
+        );
+      }
     } else {
-      this.logger.error('Order details count mismatch', {
-        aggregateId,
-      });
+      this.logger.error('Order details count mismatch', { aggregateId });
     }
 
     await this.rabbitmqService.emitProcessed('order.delivered', {
