@@ -21,6 +21,22 @@ export class OrderService {
   async finishOrder(msg: { id: string; aggregateId: string; payload: any }) {
     const { id, aggregateId, payload } = msg;
 
+    // Add idempotency check - if already processed, skip
+    const existingProcessedMessage =
+      await this.databaseService.order.procurement_orders.findFirst({
+        where: {
+          id: payload.id,
+          status: 4, // Already processed status
+        },
+      });
+
+    if (existingProcessedMessage) {
+      this.logger.warn(
+        `Order ${payload.id} already processed, skipping duplicate message`,
+      );
+      return;
+    }
+
     const procurementDetailsCount =
       await this.databaseService.procurement.supplier_order_details.count({
         where: {
