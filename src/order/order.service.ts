@@ -70,17 +70,31 @@ export class OrderService {
           });
           return;
         }
-        await this.databaseService.procurement.supplier_order_details.update({
-          where: {
-            id: imSupplierOrderDetail.id,
-          },
-          data: {
-            actual_delivery_qty: basicDetail.delivery_qty,
-            confirm_delivery_qty: basicDetail.delivery_qty,
-            final_qty: basicDetail.delivery_qty,
-            is_locked: true,
-          },
-        });
+        try {
+          await this.databaseService.procurement.supplier_order_details.update({
+            where: {
+              id: imSupplierOrderDetail.id,
+            },
+            data: {
+              actual_delivery_qty: basicDetail.delivery_qty,
+              confirm_delivery_qty: basicDetail.delivery_qty,
+              final_qty: basicDetail.delivery_qty,
+              is_locked: true,
+            },
+          });
+        } catch (error) {
+          // Skip if record is already locked
+          if (
+            error.message &&
+            error.message.includes('is locked; UPDATE is not allowed')
+          ) {
+            this.logger.warn(
+              `Skipping update for locked supplier_order_details record: ${imSupplierOrderDetail.id}`,
+            );
+            continue;
+          }
+          throw error;
+        }
         await this.databaseService.procurement.supplier_orders.update({
           where: {
             id: aggregateId,
@@ -89,17 +103,31 @@ export class OrderService {
             status: 4,
           },
         });
-        await this.databaseService.order.procurement_order_details.update({
-          where: {
-            id: detail.id,
-          },
-          data: {
-            deliver_qty: basicDetail.delivery_qty,
-            customer_receive_qty: basicDetail.delivery_qty,
-            final_qty: basicDetail.delivery_qty,
-            is_locked: true,
-          },
-        });
+        try {
+          await this.databaseService.order.procurement_order_details.update({
+            where: {
+              id: detail.id,
+            },
+            data: {
+              deliver_qty: basicDetail.delivery_qty,
+              customer_receive_qty: basicDetail.delivery_qty,
+              final_qty: basicDetail.delivery_qty,
+              is_locked: true,
+            },
+          });
+        } catch (error) {
+          // Skip if record is already locked
+          if (
+            error.message &&
+            error.message.includes('is locked; UPDATE is not allowed')
+          ) {
+            this.logger.warn(
+              `Skipping update for locked procurement_order_details record: ${detail.id}`,
+            );
+            continue;
+          }
+          throw error;
+        }
         await this.databaseService.order.procurement_orders.update({
           where: {
             id: payload.id,
