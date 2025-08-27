@@ -118,8 +118,8 @@ model procurement_order_details {
   procurement_order_return_details procurement_order_return_details[]
 
   @@unique([reference_id, order_id], map: "unique_reference_order")
-  @@index([reference_id], map: "idx_procurement_order_details_reference_id")
   @@index([reference_id, order_id], map: "idx_reference_order")
+  @@index([reference_id], map: "idx_procurement_order_details_reference_id")
 }
 
 model procurement_order_status_history {
