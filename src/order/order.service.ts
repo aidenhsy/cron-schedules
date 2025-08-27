@@ -45,6 +45,7 @@ export class OrderService {
       payload.procurement_order_details.length === procurementDetailsCount
     ) {
       let allSucceeded = true; // <--- track if all updates succeeded
+      let arrivalTime: Date | null = null; // <--- capture arrival_time for sent_time
 
       for (const detail of payload.procurement_order_details) {
         const basicDetail =
@@ -53,11 +54,24 @@ export class OrderService {
               reference_id: detail.reference_id,
               reference_order_id: aggregateId,
             },
+            select: {
+              delivery_qty: true,
+              scm_order: {
+                select: {
+                  arrival_time: true,
+                },
+              },
+            },
           });
         if (!basicDetail) {
           this.logger.error('Basic detail not found', { detail });
           allSucceeded = false;
           continue; // <--- skip this item, don't abort loop
+        }
+
+        // Capture arrival_time from the first successful basicDetail
+        if (!arrivalTime && basicDetail.scm_order?.arrival_time) {
+          arrivalTime = basicDetail.scm_order.arrival_time;
         }
 
         const imSupplierOrderDetail =
@@ -130,11 +144,19 @@ export class OrderService {
       if (allSucceeded) {
         await this.databaseService.procurement.supplier_orders.update({
           where: { id: aggregateId },
-          data: { status: 4 },
+          data: {
+            status: 4,
+            sent_time: arrivalTime,
+            receive_time: arrivalTime,
+          },
         });
         await this.databaseService.order.procurement_orders.update({
           where: { id: payload.id },
-          data: { status: 4 },
+          data: {
+            status: 4,
+            sent_time: arrivalTime,
+            customer_receive_time: arrivalTime,
+          },
         });
       } else {
         this.logger.error(
