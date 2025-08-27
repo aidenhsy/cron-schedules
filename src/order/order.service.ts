@@ -111,14 +111,6 @@ export class OrderService {
           }
           throw error;
         }
-        await this.databaseService.procurement.supplier_orders.update({
-          where: {
-            id: aggregateId,
-          },
-          data: {
-            status: 4,
-          },
-        });
         try {
           await this.databaseService.order.procurement_order_details.update({
             where: {
@@ -144,15 +136,23 @@ export class OrderService {
           }
           throw error;
         }
-        await this.databaseService.order.procurement_orders.update({
-          where: {
-            id: payload.id,
-          },
-          data: {
-            status: 4,
-          },
-        });
       }
+      await this.databaseService.procurement.supplier_orders.update({
+        where: {
+          id: aggregateId,
+        },
+        data: {
+          status: 4,
+        },
+      });
+      await this.databaseService.order.procurement_orders.update({
+        where: {
+          id: payload.id,
+        },
+        data: {
+          status: 4,
+        },
+      });
     } else {
       this.logger.error('Order details count mismatch', {
         aggregateId,
