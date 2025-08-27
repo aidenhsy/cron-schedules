@@ -6,6 +6,13 @@ import { PrismaClient as PricingClient } from '@prisma/scmpricing';
 import { PrismaClient as InventoryClient } from '@prisma/inventory';
 import { PrismaClient as ImbasicClient } from '@prisma/imbasic';
 
+import { PrismaClient as DevProcurementClient } from '@prisma/dev-procurement';
+import { PrismaClient as DevOrderClient } from '@prisma/dev-scmorder';
+import { PrismaClient as DevImbasicClient } from '@prisma/dev-imbasic';
+import { PrismaClient as DevBasicClient } from '@prisma/dev-scmbasic';
+import { PrismaClient as DevPricingClient } from '@prisma/dev-scmpricing';
+import { PrismaClient as DevInventoryClient } from '@prisma/dev-inventory';
+
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   procurement: ProcurementClient;
@@ -15,6 +22,13 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   pricing: PricingClient;
   inventory: InventoryClient;
 
+  devProcurement: DevProcurementClient;
+  devOrder: DevOrderClient;
+  devImbasic: DevImbasicClient;
+  devBasic: DevBasicClient;
+  devPricing: DevPricingClient;
+  devInventory: DevInventoryClient;
+
   constructor() {
     this.procurement = new ProcurementClient();
     this.order = new OrderClient();
@@ -22,6 +36,13 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     this.basic = new BasicClient();
     this.pricing = new PricingClient();
     this.inventory = new InventoryClient();
+
+    this.devProcurement = new DevProcurementClient();
+    this.devOrder = new DevOrderClient();
+    this.devImbasic = new DevImbasicClient();
+    this.devBasic = new DevBasicClient();
+    this.devPricing = new DevPricingClient();
+    this.devInventory = new DevInventoryClient();
   }
 
   async onModuleInit() {
@@ -32,6 +53,13 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       this.basic.$connect(),
       this.pricing.$connect(),
       this.inventory.$connect(),
+
+      this.devProcurement.$connect(),
+      this.devOrder.$connect(),
+      this.devImbasic.$connect(),
+      this.devBasic.$connect(),
+      this.devPricing.$connect(),
+      this.devInventory.$connect(),
     ]);
   }
 
@@ -43,6 +71,13 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       this.basic.$disconnect(),
       this.pricing.$disconnect(),
       this.inventory.$disconnect(),
+
+      this.devProcurement.$disconnect(),
+      this.devOrder.$disconnect(),
+      this.devImbasic.$disconnect(),
+      this.devBasic.$disconnect(),
+      this.devPricing.$disconnect(),
+      this.devInventory.$disconnect(),
     ]);
   }
 }

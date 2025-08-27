@@ -24,7 +24,14 @@
     "db:scmbasic": "prisma db pull --schema=prisma/scmbasic.prisma && prisma generate --schema=prisma/scmbasic.prisma",
     "db:scmorder": "prisma db pull --schema=prisma/scmorder.prisma && prisma generate --schema=prisma/scmorder.prisma",
     "db:scmpricing": "prisma db pull --schema=prisma/scmpricing.prisma && prisma generate --schema=prisma/scmpricing.prisma",
-    "db:all": "npm run db:procurement && npm run db:imbasic && npm run db:inventory && npm run db:scmbasic && npm run db:scmorder && npm run db:scmpricing"
+    "db:all": "npm run db:procurement && npm run db:imbasic && npm run db:inventory && npm run db:scmbasic && npm run db:scmorder && npm run db:scmpricing",
+    "dev:procurement": "prisma db pull --schema=prisma/dev-procurement.prisma && prisma generate --schema=prisma/dev-procurement.prisma",
+    "dev:inventory": "prisma db pull --schema=prisma/dev-inventory.prisma && prisma generate --schema=prisma/dev-inventory.prisma",
+    "dev:imbasic": "prisma db pull --schema=prisma/dev-imbasic.prisma && prisma generate --schema=prisma/dev-imbasic.prisma",
+    "dev:scmbasic": "prisma db pull --schema=prisma/dev-scmbasic.prisma && prisma generate --schema=prisma/dev-scmbasic.prisma",
+    "dev:scmorder": "prisma db pull --schema=prisma/dev-scmorder.prisma && prisma generate --schema=prisma/dev-scmorder.prisma",
+    "dev:scmpricing": "prisma db pull --schema=prisma/dev-scmpricing.prisma && prisma generate --schema=prisma/dev-scmpricing.prisma",
+    "dev:all": "npm run dev:procurement && npm run dev:imbasic && npm run dev:inventory && npm run dev:scmbasic && npm run dev:scmorder && npm run dev:scmpricing"
   },
   "dependencies": {
     "@golevelup/nestjs-rabbitmq": "^6.0.2",

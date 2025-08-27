@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { RabbitMQModule } from '@golevelup/nestjs-rabbitmq';
+import { RabbitmqService } from './rabbitmq.service';
+import { DatabaseModule } from 'src/database/database.module';
 
 @Module({
   imports: [
@@ -15,7 +17,9 @@ import { RabbitMQModule } from '@golevelup/nestjs-rabbitmq';
         ],
       }),
     }),
+    DatabaseModule,
   ],
-  exports: [RabbitMQModule],
+  exports: [RabbitmqService],
+  providers: [RabbitmqService],
 })
 export class RabbitmqModule {}
