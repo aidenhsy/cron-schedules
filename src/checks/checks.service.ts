@@ -355,7 +355,16 @@ export class ChecksService {
             .join('\n\n')
         : `\n\nNo mismatches found 🎉`;
 
-    const body = summarySection + ordersSection;
+    const missingMatchIds = orders
+      .filter(
+        (o) =>
+          o.basic_vs_order > 0 ||
+          o.procurement_vs_basic > 0 ||
+          o.procurement_vs_order > 0,
+      )
+      .map((o) => o.client_order_id);
+
+    const body = summarySection + ordersSection + missingMatchIds.join('\n');
 
     await this.mailService.sendMail({
       to: 'aiden@shaihukeji.com',
