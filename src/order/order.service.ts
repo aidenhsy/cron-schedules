@@ -19,6 +19,7 @@ export class OrderService {
   })
   async finishOrder(msg: { id: string; aggregateId: string; payload: any }) {
     const { id, aggregateId, payload } = msg;
+    this.logger.log(`Order ${aggregateId} delivered`);
 
     const order =
       await this.databaseService.procurement.supplier_orders.findUnique({
