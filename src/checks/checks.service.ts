@@ -366,17 +366,17 @@ export class ChecksService {
 
     // summary section
     const summarySection = `
-  📊 Daily Report
+  Daily Report
   
   Missing Orders:
-    • SCM orders: ${missingScmOrders.length}
-    • Procurement orders: ${missingProcurementOrders.length}
+    - SCM orders: ${missingScmOrders.length}
+    - Procurement orders: ${missingProcurementOrders.length}
   
   Delivery Qty Mismatch:
-    • Orders with mismatches: ${summary.total_orders_with_diffs}
-    • basic-vs-order: ${summary.total_basic_vs_order}
-    • procurement-vs-basic: ${summary.total_procurement_vs_basic}
-    • procurement-vs-order: ${summary.total_procurement_vs_order}
+    - Orders with mismatches: ${summary.total_orders_with_diffs}
+    - basic-vs-order: ${summary.total_basic_vs_order}
+    - procurement-vs-basic: ${summary.total_procurement_vs_basic}
+    - procurement-vs-order: ${summary.total_procurement_vs_order}
   `.trim();
 
     // per-order section (only client_order_id and counts)
@@ -390,7 +390,7 @@ export class ChecksService {
                 `    basic-vs-order: ${o.basic_vs_order}, procurement-vs-basic: ${o.procurement_vs_basic}, procurement-vs-order: ${o.procurement_vs_order}`,
             )
             .join('\n\n')
-        : `\n\nNo mismatches found 🎉`;
+        : `\n\nNo mismatches found`;
 
     const missingMatchIds = orders
       .filter(
@@ -404,13 +404,13 @@ export class ChecksService {
     const idSection =
       orders.length > 0
         ? `\n\nMissing match ids:\n` + missingMatchIds.join('\n')
-        : `\n\nNo missing match ids found 🎉`;
+        : `\n\nNo missing match ids found`;
 
     const body = summarySection + ordersSection + idSection;
 
     await this.mailService.sendMail({
       to: 'aiden@shaihukeji.com',
-      subject: 'Daily Report',
+      subject: `Daily Report - ${new Date().toISOString().slice(0, 10)}`, // safer subject
       text: body,
       attachments: [],
     });
