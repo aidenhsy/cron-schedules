@@ -401,12 +401,7 @@ export class ChecksService {
       )
       .map((o) => o.client_order_id);
 
-    const idSection =
-      orders.length > 0
-        ? `\n\nMissing match ids:\n` + missingMatchIds.join('\n')
-        : `\n\nNo missing match ids found`;
-
-    const body = summarySection + ordersSection + idSection;
+    const body = summarySection + ordersSection;
 
     await this.mailService.sendMail({
       to: 'aiden@shaihukeji.com',
