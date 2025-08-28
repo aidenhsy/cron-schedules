@@ -632,36 +632,38 @@ model scm_order_708 {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model scm_order_details {
-  id                            Int                             @id @default(autoincrement())
-  stock_order_no                String?                         @db.VarChar(60)
-  goods_name                    String?                         @db.VarChar(60)
-  num                           Decimal                         @db.Decimal
-  price                         Decimal?                        @db.Decimal(12, 6)
-  spec_text                     String?                         @db.VarChar(60)
-  ratio                         Int?
-  status                        Int                             @default(0) @db.SmallInt
-  order_id                      Int
-  create_time                   DateTime?                       @default(now()) @db.Timestamp(6)
-  total_price                   Decimal?                        @db.Decimal(12, 6)
-  small_unit                    String?                         @db.VarChar(10)
-  sale_unit                     String?                         @db.VarChar(10)
-  goods_id                      Int?
-  delivery_qty                  Decimal                         @default(0) @db.Decimal(10, 2)
-  letter_name                   String?                         @db.VarChar
-  hide_price                    Decimal?                        @default(0) @db.Decimal(12, 6)
-  yu_price                      Decimal?                        @default(0) @db.Decimal(12, 6)
-  item_total                    Decimal?                        @db.Decimal(12, 2)
-  remaining_quantity            Decimal?                        @db.Decimal(10, 4)
-  good_price_id                 String?                         @db.VarChar(50)
-  delivery_time                 DateTime?                       @db.Timestamp(6)
-  reference_id                  String?                         @db.VarChar
-  reference_order_id            String?                         @db.VarChar
-  deliver_goods_qty             Decimal?                        @db.Decimal(12, 2)
-  scm_goods_outbound            scm_goods_outbound[]
-  scm_goods                     scm_goods?                      @relation(fields: [goods_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "scm_order_details_goods_id_fkey44")
-  scm_order                     scm_order                       @relation(fields: [order_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  scm_order_stock               scm_order_stock?                @relation(fields: [stock_order_no], references: [stock_order_no], onDelete: NoAction, onUpdate: NoAction, map: "scm_order_details_stock_order_no_fkey42")
-  scm_store_picking_supplyitems scm_store_picking_supplyitems[]
+  id                              Int                               @id @default(autoincrement())
+  stock_order_no                  String?                           @db.VarChar(60)
+  goods_name                      String?                           @db.VarChar(60)
+  num                             Decimal                           @db.Decimal
+  price                           Decimal?                          @db.Decimal(12, 6)
+  spec_text                       String?                           @db.VarChar(60)
+  ratio                           Int?
+  status                          Int                               @default(0) @db.SmallInt
+  order_id                        Int
+  create_time                     DateTime?                         @default(now()) @db.Timestamp(6)
+  total_price                     Decimal?                          @db.Decimal(12, 6)
+  small_unit                      String?                           @db.VarChar(10)
+  sale_unit                       String?                           @db.VarChar(10)
+  goods_id                        Int?
+  delivery_qty                    Decimal                           @default(0) @db.Decimal(10, 2)
+  letter_name                     String?                           @db.VarChar
+  hide_price                      Decimal?                          @default(0) @db.Decimal(12, 6)
+  yu_price                        Decimal?                          @default(0) @db.Decimal(12, 6)
+  item_total                      Decimal?                          @db.Decimal(12, 2)
+  remaining_quantity              Decimal?                          @db.Decimal(10, 4)
+  good_price_id                   String?                           @db.VarChar(50)
+  delivery_time                   DateTime?                         @db.Timestamp(6)
+  reference_id                    String?                           @db.VarChar
+  reference_order_id              String?                           @db.VarChar
+  deliver_goods_qty               Decimal?                          @db.Decimal(12, 2)
+  sales_return_qty                Decimal?                          @default(0) @db.Decimal(10, 2)
+  scm_goods_outbound              scm_goods_outbound[]
+  scm_goods                       scm_goods?                        @relation(fields: [goods_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "scm_order_details_goods_id_fkey44")
+  scm_order                       scm_order                         @relation(fields: [order_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  scm_order_stock                 scm_order_stock?                  @relation(fields: [stock_order_no], references: [stock_order_no], onDelete: NoAction, onUpdate: NoAction, map: "scm_order_details_stock_order_no_fkey42")
+  scm_store_picking_supplyitems   scm_store_picking_supplyitems[]
+  scm_supplier_release_record_log scm_supplier_release_record_log[]
 
   @@index([order_id], map: "idx_scm_order_details_order_id")
   @@index([stock_order_no], map: "idx_scm_order_details_stock_order_no")
@@ -759,19 +761,20 @@ model scm_order_scm {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model scm_order_stock {
-  id                Int                 @id @default(autoincrement())
-  order_id          Int
-  stock_id          Int?                @db.SmallInt
-  direct            Int                 @db.SmallInt
-  create_time       DateTime?           @default(now()) @db.Timestamp(6)
-  stock_order_no    String?             @unique(map: "unique_stock_order_no") @db.VarChar(600)
-  status            Int?                @default(0) @db.SmallInt
-  receival_time     DateTime?           @db.Timestamp(6)
-  locking           Int?                @default(0) @db.SmallInt
-  supplier_id       Int?
-  scm_order_details scm_order_details[]
-  scm_stock         scm_stock?          @relation(fields: [stock_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "scm_order_stock_stock_id_fkey15")
-  supplier          supplier?           @relation(fields: [supplier_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id                              Int                               @id @default(autoincrement())
+  order_id                        Int
+  stock_id                        Int?                              @db.SmallInt
+  direct                          Int                               @db.SmallInt
+  create_time                     DateTime?                         @default(now()) @db.Timestamp(6)
+  stock_order_no                  String?                           @unique(map: "unique_stock_order_no") @db.VarChar(600)
+  status                          Int?                              @default(0) @db.SmallInt
+  receival_time                   DateTime?                         @db.Timestamp(6)
+  locking                         Int?                              @default(0) @db.SmallInt
+  supplier_id                     Int?
+  scm_order_details               scm_order_details[]
+  scm_stock                       scm_stock?                        @relation(fields: [stock_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "scm_order_stock_stock_id_fkey15")
+  supplier                        supplier?                         @relation(fields: [supplier_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  scm_supplier_release_record_log scm_supplier_release_record_log[]
 }
 
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
@@ -808,19 +811,21 @@ model scm_price_plan_scm_goods {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model scm_return_goods {
-  id              Int        @id @default(autoincrement())
-  supplier_id     Int?
-  goods_id        Int?
-  date            DateTime?  @db.Date
-  qty             Decimal?   @db.Decimal(12, 6)
-  price           Decimal?   @db.Decimal(12, 6)
-  status          Int?       @default(0) @db.SmallInt
-  order_detail_id Int?
-  reason          Int?       @default(0) @db.SmallInt
-  create_time     DateTime?  @default(now()) @db.Timestamp(6)
-  remark          String?    @db.VarChar
-  stock_id        Int?
-  scm_goods       scm_goods? @relation(fields: [goods_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_scm_return_goods_scm_goods")
+  id                  Int        @id @default(autoincrement())
+  supplier_id         Int?
+  goods_id            Int?
+  date                DateTime?  @db.Date
+  qty                 Decimal?   @db.Decimal(12, 6)
+  price               Decimal?   @db.Decimal(12, 6)
+  status              Int?       @default(0) @db.SmallInt
+  order_detail_id     Int?
+  reason              Int?       @default(0) @db.SmallInt
+  create_time         DateTime?  @default(now()) @db.Timestamp(6)
+  remark              String?    @db.VarChar
+  stock_id            Int?
+  return_id           String?    @db.VarChar(255)
+  storage_position_id String?    @db.VarChar
+  scm_goods           scm_goods? @relation(fields: [goods_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_scm_return_goods_scm_goods")
 }
 
 model scm_return_goods_month {
@@ -1245,6 +1250,21 @@ model scm_order_details_1 {
   deliver_goods_qty  Decimal?  @db.Decimal(12, 6)
 
   @@ignore
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model scm_supplier_release_record_log {
+  id                Int               @id(map: "scm_supplier_release_record_pkey") @default(autoincrement())
+  order_stock_id    Int               @default(autoincrement())
+  order_details_id  Int               @default(autoincrement())
+  delivery_qty      Decimal           @default(0) @db.Decimal(10, 2)
+  delivery_time     DateTime?         @db.Timestamp(6)
+  create_time       DateTime?         @default(now()) @db.Timestamp(6)
+  scm_order_details scm_order_details @relation(fields: [order_details_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "scm_supplier_release_record_order_details_id_fkey")
+  scm_order_stock   scm_order_stock   @relation(fields: [order_stock_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "scm_supplier_release_record_order_stock_id_fkey")
+
+  @@index([order_details_id], map: "idx_scm_supplier_release_record_log_order_details_id")
+  @@index([order_stock_id], map: "idx_scm_supplier_release_record_log_order_stock_id")
 }
 
 enum pricing_strategy_type {
