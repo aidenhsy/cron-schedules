@@ -289,26 +289,35 @@ export class ChecksService {
 
             if (!eq(basicQty, orderQty)) {
               basicVsOrder++;
-              if (debug)
-                this.logger.warn(
-                  `[basic vs order] ${order.client_order_id}|${refKey} basic=${basicQty} order=${orderQty}`,
-                );
+              this.logger.warn(
+                `[basic vs order] order_id=${order.client_order_id}, ref=${refKey}, basic=${basicQty}, order=${orderQty}`,
+              );
             }
+
             if (!eq(procQty, basicQty)) {
               procurementVsBasic++;
-              if (debug)
-                this.logger.warn(
-                  `[proc vs basic] ${order.client_order_id}|${refKey} proc=${procQty} basic=${basicQty}`,
-                );
+              this.logger.warn(
+                `[proc vs basic] order_id=${order.client_order_id}, ref=${refKey}, proc=${procQty}, basic=${basicQty}`,
+              );
+            }
+
+            // 👇 optional consolidated log showing all three values for this reference
+            if (!eq(orderQty, basicQty) || !eq(procQty, basicQty)) {
+              console.log(
+                `Delivery difference: order_id=${order.client_order_id}, ref=${refKey}, order=${orderQty}, basic=${basicQty}, procurement=${procQty}`,
+              );
             }
           } else {
             // no basic → compare procurement vs order only
             if (!eq(procQty, orderQty)) {
               procurementVsOrder++;
-              if (debug)
-                this.logger.warn(
-                  `[proc vs order] ${order.client_order_id}|${refKey} proc=${procQty} order=${orderQty}`,
-                );
+              this.logger.warn(
+                `[proc vs order] order_id=${order.client_order_id}, ref=${refKey}, proc=${procQty}, order=${orderQty}`,
+              );
+
+              console.log(
+                `Delivery difference (no basic): order_id=${order.client_order_id}, ref=${refKey}, order=${orderQty}, procurement=${procQty}`,
+              );
             }
           }
         }
