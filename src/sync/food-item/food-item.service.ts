@@ -60,7 +60,18 @@ export class FoodItemService {
 
       if (syncItems.length > 0) {
         for (const syncItem of syncItems) {
-          await this.databaseService.imbasic.st_food_item.upsert({
+          // await this.databaseService.imbasic.st_food_item.upsert({
+          //   where: {
+          //     id: syncItem.id,
+          //   },
+          //   update: {
+          //     ...syncItem,
+          //   },
+          //   create: {
+          //     ...syncItem,
+          //   },
+          // });
+          await this.databaseService.devOrderService.st_food_item.upsert({
             where: {
               id: syncItem.id,
             },
