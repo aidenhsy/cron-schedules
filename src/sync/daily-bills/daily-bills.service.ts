@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { DatabaseService } from 'src/database/database.service';
 import { OperationService } from 'src/tcsl/业务数据/业务数据.service';
 import * as dayjs from 'dayjs';
@@ -9,18 +9,35 @@ import pLimit from 'p-limit';
 import * as fs from 'fs';
 import * as path from 'path';
 import { SyncDailyBillsDto } from './dto/sync-daily-billls.dto';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 @Injectable()
 export class DailyBillsService {
-  // 用于存储当前正在执行的getSerialData调用的锁
-  private serialDataLocks: Map<string, Promise<any>> = new Map();
+  private readonly logger = new Logger(DailyBillsService.name);
 
   constructor(
     private readonly db: DatabaseService,
     private readonly operationService: OperationService,
   ) {}
+
+  // @Cron(CronExpression.EVERY_DAY_AT_1AM, {
+  //   timeZone: 'Asia/Shanghai',
+  // })
+  async syncDailyBillsCron() {
+    const yesterday = dayjs()
+      .tz('Asia/Shanghai')
+      .subtract(1, 'day')
+      .format('YYYY-MM-DD');
+    this.logger.log(
+      `sync daily bills at ${yesterday}, today is ${dayjs().tz('Asia/Shanghai').format('YYYY-MM-DD')}`,
+    );
+    await this.syncDailyBills({
+      start_date: yesterday,
+      end_date: yesterday,
+    });
+  }
 
   async syncDailyBills(syncDto: SyncDailyBillsDto) {
     await this.writeErrorLogs(
@@ -28,7 +45,7 @@ export class DailyBillsService {
       'sync.log',
     );
     const startTime = dayjs();
-    console.log(`sync start at ${startTime.format()}`);
+    this.logger.log(`sync start at ${startTime.format()}`);
     const shops = await this.db.devImbasic.scm_shop.findMany({
       where: {
         tc_shop_id: {
@@ -78,7 +95,7 @@ export class DailyBillsService {
           shop,
           task: () =>
             limit(async () => {
-              console.log(
+              this.logger.log(
                 `sync shop ${shop.shop_name} ${index + 1}/${shopCount}, date ${date} start`,
               );
               try {
@@ -92,7 +109,7 @@ export class DailyBillsService {
                   },
                   skip_syned_item: syncDto.skip_syned_item,
                 });
-                console.log(
+                this.logger.log(
                   `sync shop ${shop.shop_name} ${index}/${shopCount}, date ${date} end`,
                 );
                 return {
@@ -104,7 +121,7 @@ export class DailyBillsService {
               } catch (error) {
                 // 异常后，等待1秒 一般是接口调用频率过快
                 await this.sleep(1000);
-                console.log(
+                this.logger.log(
                   `sync shop ${shop.shop_name}, date ${date} error:`,
                   error.message,
                 );
@@ -161,8 +178,8 @@ export class DailyBillsService {
       });
     }
 
-    console.log('Date sync result:', dateSyncResult);
-    console.log('Error sync result:', errorSyncResult);
+    this.logger.log('Date sync result:', dateSyncResult);
+    this.logger.log('Error sync result:', errorSyncResult);
     const endErrorLogs: {
       date: string;
       shop: string;
@@ -172,7 +189,7 @@ export class DailyBillsService {
     if (errorSyncResult.length > 0) {
       // await this.writeErrorLogs(errorSyncResult);
       for (const [index, syncErrItem] of errorSyncResult.entries()) {
-        console.log(
+        this.logger.log(
           `sync errorList ${index + 1}/${errorSyncResult.length}, shop ${syncErrItem.shop}, date ${syncErrItem.date} start`,
         );
         try {
@@ -185,7 +202,7 @@ export class DailyBillsService {
               tc_shop_id: syncErrItem.tc_id,
             },
           });
-          console.log(
+          this.logger.log(
             `sync errorList shop ${syncErrItem.shop}, date ${syncErrItem.date} end`,
           );
         } catch (error) {
@@ -205,7 +222,7 @@ export class DailyBillsService {
     );
 
     const duration = endTime.diff(startTime, 'millisecond');
-    console.log(`sync end, duration: ${duration / 1000} s`);
+    this.logger.log(`sync end, duration: ${duration / 1000} s`);
 
     return {
       result,
@@ -323,7 +340,7 @@ export class DailyBillsService {
           await this.writeErrorLogs(settleDetails, 'sync_settle_details.log');
           throw error;
         }
-        // console.log(`syncd page ${pageNo}, total page ${res.pageInfo.pageTotal}`);
+        // this.logger.log(`syncd page ${pageNo}, total page ${res.pageInfo.pageTotal}`);
       }
       if (res.pageInfo.pageNo < res.pageInfo.pageTotal) {
         pageNo++;
@@ -558,15 +575,6 @@ export class DailyBillsService {
     return new Promise((res) => setTimeout(res, ms));
   }
 
-  // private removeDuplicatesByBsId<T extends { bs_id: string }>(array: T[]): T[] {
-  //   const seen = new Map<string, T>();
-  //   return array.filter((item) => {
-  //     if (seen.has(item.bs_id)) return false;
-  //     seen.set(item.bs_id, item);
-  //     return true;
-  //   });
-  // }
-
   // 将错误同步结果写入日志文件
   private async writeErrorLogs(
     errorSyncResult: any,
@@ -588,9 +596,9 @@ export class DailyBillsService {
 
       // 追加写入日志文件
       fs.appendFileSync(logFilePath, logContent, 'utf8');
-      console.log(`sync results have been written to ${logFilePath}`);
+      this.logger.log(`sync results have been written to ${logFilePath}`);
     } catch (error) {
-      console.error('Failed to write error sync logs:', error);
+      this.logger.error('Failed to write error sync logs:', error);
     }
   }
 }
