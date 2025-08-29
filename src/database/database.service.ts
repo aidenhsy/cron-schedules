@@ -12,6 +12,7 @@ import { PrismaClient as DevImbasicClient } from '@prisma/dev-imbasic';
 import { PrismaClient as DevBasicClient } from '@prisma/dev-scmbasic';
 import { PrismaClient as DevPricingClient } from '@prisma/dev-scmpricing';
 import { PrismaClient as DevInventoryClient } from '@prisma/dev-inventory';
+import { PrismaClient as DevOrderServiceClient } from '@prisma/dev-order-service';
 
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
@@ -28,6 +29,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   devBasic: DevBasicClient;
   devPricing: DevPricingClient;
   devInventory: DevInventoryClient;
+  devOrderService: DevOrderServiceClient;
 
   constructor() {
     this.procurement = new ProcurementClient();
@@ -43,16 +45,17 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     this.devBasic = new DevBasicClient();
     this.devPricing = new DevPricingClient();
     this.devInventory = new DevInventoryClient();
+    this.devOrderService = new DevOrderServiceClient();
   }
 
   async onModuleInit() {
     await Promise.all([
-      this.procurement.$connect(),
-      this.order.$connect(),
-      this.imbasic.$connect(),
-      this.basic.$connect(),
-      this.pricing.$connect(),
-      this.inventory.$connect(),
+      // this.procurement.$connect(),
+      // this.order.$connect(),
+      // this.imbasic.$connect(),
+      // this.basic.$connect(),
+      // this.pricing.$connect(),
+      // this.inventory.$connect(),
 
       this.devProcurement.$connect(),
       this.devOrder.$connect(),
@@ -60,6 +63,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       this.devBasic.$connect(),
       this.devPricing.$connect(),
       this.devInventory.$connect(),
+      this.devOrderService.$connect(),
     ]);
   }
 
@@ -78,6 +82,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       this.devBasic.$disconnect(),
       this.devPricing.$disconnect(),
       this.devInventory.$disconnect(),
+      this.devOrderService.$disconnect(),
     ]);
   }
 }

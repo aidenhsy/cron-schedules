@@ -51,7 +51,18 @@ export class FoodCategoryService {
 
       if (syncItems.length > 0) {
         for (const syncItem of syncItems) {
-          await this.databaseService.imbasic.st_food_category.upsert({
+          // await this.databaseService.imbasic.st_food_category.upsert({
+          //   where: {
+          //     id: syncItem.id,
+          //   },
+          //   update: {
+          //     ...syncItem,
+          //   },
+          //   create: {
+          //     ...syncItem,
+          //   },
+          // });
+          await this.databaseService.devOrderService.st_food_category.upsert({
             where: {
               id: syncItem.id,
             },

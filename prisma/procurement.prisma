@@ -8,42 +8,6 @@ datasource db {
   url      = env("PROCUREMENT_DATABASE_URL")
 }
 
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model base_dimension {
-  id                Int                 @id(map: "food_dimension_pk") @default(autoincrement())
-  code              String?             @db.VarChar
-  name              String              @db.VarChar
-  sort_order        Int?
-  pinyin            String              @db.VarChar
-  is_enable         Boolean             @default(false)
-  is_system         Boolean             @default(false)
-  is_default        Boolean             @default(false)
-  parent_id         Int                 @default(0)
-  delflg            Int                 @default(0)
-  create_dept_id    String?             @db.VarChar
-  create_dept_name  String?             @db.VarChar
-  brand_id          Int?
-  brand_name        String?             @db.VarChar
-  organization_id   Int
-  organization_name String?             @db.VarChar
-  create_time       DateTime?           @db.Timestamp(6)
-  create_id         String?             @db.Uuid
-  modify_time       DateTime?           @db.Timestamp(6)
-  modify_id         String?             @db.Uuid
-  ingredients_goods ingredients_goods[]
-}
-
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model base_dimension_ratio {
-  dimension_id_1 Int
-  dimension_id_2 Int
-  ratio          Decimal   @default(0) @db.Decimal(6, 6)
-  create_time    DateTime? @db.Timestamp(6)
-  create_id      String?   @db.Uuid
-
-  @@id([dimension_id_1, dimension_id_2], map: "base_dimension_ratio_pk")
-}
-
 model big_org {
   id                   Int                    @id @default(autoincrement())
   name                 String?                @db.VarChar
@@ -100,35 +64,6 @@ model client_tier {
   scm_shop   scm_shop[]
 }
 
-model day_info {
-  id                             String                           @id @db.VarChar
-  is_working                     Int?
-  is_holiday                     Int?
-  day_of_week                    Int?
-  date                           DateTime?                        @db.Date
-  st_daily_count                 st_daily_count[]
-  st_inventory_single            st_inventory_single[]
-  st_predict_daily_sales         st_predict_daily_sales[]
-  st_predict_daily_sales_details st_predict_daily_sales_details[]
-  st_predict_order               st_predict_order[]
-}
-
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model equipment_category {
-  id             String           @id @db.VarChar(50)
-  name           String           @db.VarChar(255)
-  is_enable      Boolean          @default(true)
-  shop_equipment shop_equipment[]
-}
-
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model equipment_manufacturer {
-  id             String           @id @db.VarChar(50)
-  name           String           @db.VarChar(255)
-  is_enable      Boolean          @default(true)
-  shop_equipment shop_equipment[]
-}
-
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model generic_items {
   id                        Int                         @id(map: "scm_goods_pkey") @default(autoincrement())
@@ -145,99 +80,6 @@ model generic_items {
   shop_specialty_plan_items shop_specialty_plan_items[]
   supplier_order_details    supplier_order_details[]
   supply_plan_items         supply_plan_items[]
-}
-
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model group_organization {
-  id               Int       @id(map: "group_organization_pk")
-  code             String?   @db.VarChar
-  name             String    @db.VarChar
-  short_name       String?   @db.VarChar
-  head_dept_id     Int
-  remark           String?   @db.VarChar
-  url              String?   @db.VarChar
-  delflg           Int       @default(0)
-  create_dept_id   Int?
-  create_dept_name String?   @db.VarChar
-  create_time      DateTime? @db.Timestamp(6)
-  create_id        String?   @db.Uuid
-  modify_time      DateTime? @db.Timestamp(6)
-  modify_id        String?   @db.Uuid
-}
-
-model hello {
-  id      Int     @id @default(autoincrement())
-  message String? @db.VarChar
-}
-
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model ingredients_goods {
-  id                      Int                     @id(map: "ingredients_goods_pk") @default(autoincrement())
-  code                    String?                 @db.VarChar
-  name                    String                  @db.VarChar
-  base_dimension_id       Int
-  goods_class_id          Int
-  goods_label             Json?
-  s_day                   Int?
-  e_day                   Int?
-  letter_name             String?                 @db.VarChar
-  photo_url               String?                 @db.VarChar
-  external_code           String?                 @db.VarChar
-  remark                  String?                 @db.VarChar
-  delflg                  Int                     @default(0)
-  create_dept_id          Int?
-  create_dept_name        String?                 @db.VarChar
-  create_time             DateTime?               @db.Timestamp(6)
-  create_id               String?                 @db.Uuid
-  modify_time             DateTime?               @db.Timestamp(6)
-  modify_id               String?                 @db.Uuid
-  base_dimension          base_dimension          @relation(fields: [base_dimension_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "ingredients_goods_base_dimension_id_fk")
-  ingredients_goods_class ingredients_goods_class @relation(fields: [goods_class_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "ingredients_goods_ingredients_goods_class_id_fk")
-}
-
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model ingredients_goods_class {
-  id                Int                 @id(map: "ingredients_goods_class_pk") @default(autoincrement())
-  code              String?             @db.VarChar
-  name              String              @db.VarChar
-  parent_id         Int                 @default(0)
-  create_id         String?             @db.Uuid
-  create_time       DateTime?           @db.Timestamp(6)
-  ingredients_goods ingredients_goods[]
-}
-
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model ingredients_goods_label {
-  id          Int       @id(map: "ingredients_goods_label_pk") @default(autoincrement())
-  code        String?   @db.VarChar
-  name        String    @db.VarChar
-  create_time DateTime? @db.Timestamp(6)
-  create_id   String?   @db.Uuid
-}
-
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model ingredients_goods_supplier {
-  id                       Int       @id(map: "ingredients_goods_supplier_pk") @default(autoincrement())
-  ingredients_goods_id     Int
-  supplier_id              Int?
-  supplier_name            String    @db.VarChar
-  supplier_type            Int
-  supplier_goods_id        String?   @db.VarChar
-  supplier_goods_name      String    @db.VarChar
-  supplier_goods_url       String?   @db.VarChar
-  supplier_goods_photo_url String?   @db.VarChar
-  remark                   String?   @db.VarChar
-  brand_id                 Int?
-  brand_name               String?   @db.VarChar
-  organization_id          Int?
-  organization_name        String?   @db.VarChar
-  delflg                   Int?
-  create_dept_id           Int?
-  create_dept_name         String?   @db.VarChar
-  create_time              DateTime? @db.Timestamp(6)
-  create_id                String?   @db.Uuid
-  modify_time              DateTime? @db.Timestamp(6)
-  modify_id                String?   @db.Uuid
 }
 
 model outbox_events {
@@ -265,24 +107,6 @@ model plan_item_supplier_good {
   @@unique([plan_item_id, supplier_item_id, shop_id], map: "unique_plan_item_supplier_shop")
   @@unique([shop_id, supplier_item_id], map: "unique_shop_supplier_item")
   @@index([plan_item_id, shop_id], map: "idx_pisg_plan_shop")
-}
-
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model roles {
-  id         Int          @id @default(autoincrement())
-  role_name  String       @unique @db.VarChar(100)
-  created_at DateTime?    @default(now()) @db.Timestamp(6)
-  user_roles user_roles[]
-}
-
-model scm_brand_account {
-  id               String            @id @default(dbgenerated("(uuid_generate_v4())::character varying")) @db.VarChar
-  brand_id         Int?
-  account_id       Int?
-  scm_shop_account scm_shop_account? @relation(fields: [account_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "scm_brand_account_account_id_fkey60")
-  scm_shop_brand   scm_shop_brand?   @relation(fields: [brand_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "scm_brand_account_brand_id_fkey59")
-
-  @@unique([brand_id, account_id], map: "unique_brand_account")
 }
 
 model scm_good_units {
@@ -478,30 +302,6 @@ model shop_area {
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model shop_equipment {
-  id                     String                 @id @db.VarChar(50)
-  name                   String                 @db.VarChar(100)
-  manufacturer_id        String                 @db.VarChar(50)
-  category_id            String                 @db.VarChar(50)
-  size                   String?                @db.VarChar(100)
-  purchase_date          DateTime?              @db.Timestamp(6)
-  warranty_period        String?                @db.VarChar(500)
-  after_service_phone    String?                @db.VarChar(100)
-  purchase_money         Decimal?               @db.Decimal(10, 2)
-  picture_url            String?                @db.VarChar(255)
-  belong_shop_id         Int?
-  create_user_id         Int?
-  create_time            DateTime?              @default(now()) @db.Timestamp(6)
-  status                 Int?                   @default(1) @db.SmallInt
-  remark                 String?                @db.VarChar(300)
-  qrcode_url             String?                @db.VarChar(200)
-  equipment_category     equipment_category     @relation(fields: [category_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "shop_equipment_equipment_category_fk")
-  equipment_manufacturer equipment_manufacturer @relation(fields: [manufacturer_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "shop_equipment_equipment_manufacturer_fk")
-  scm_shop_account       scm_shop_account?      @relation(fields: [create_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "shop_equipment_scm_shop_account_fk")
-  scm_shop               scm_shop?              @relation(fields: [belong_shop_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "shop_equipment_scm_shop_fk")
-}
-
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model shop_info {
   id                Int       @id(map: "shop_info_pk") @default(autoincrement())
   code              String?   @db.VarChar
@@ -667,35 +467,6 @@ model shop_procurement_plan_ingredients_goods {
   @@id([procurement_plan_id, ingredients_goods_id], map: "shop_procurement_plan_ingredients_goods_pk")
 }
 
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model st_daily_count {
-  id                   String                 @id @default(dbgenerated("uuid_generate_v4()")) @db.VarChar
-  shop_id              Int?
-  date_string          String?                @db.VarChar
-  date                 DateTime?              @db.Date
-  inventory_value      Decimal?               @db.Decimal(12, 2)
-  created_at           DateTime?              @default(now()) @db.Timestamp(6)
-  updated_at           DateTime?              @default(now()) @db.Timestamp(6)
-  day_info             day_info?              @relation(fields: [date_string], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  scm_shop             scm_shop?              @relation(fields: [shop_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  st_daily_count_items st_daily_count_items[]
-}
-
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model st_daily_count_items {
-  id                  String          @id @default(dbgenerated("uuid_generate_v4()")) @db.VarChar
-  supply_plan_good_id String?         @db.VarChar
-  count_id            String?         @db.VarChar
-  price               Decimal?        @db.Decimal(12, 2)
-  hypo_count          Decimal?        @db.Decimal(12, 2)
-  real_hypo_count     Decimal?        @db.Decimal(12, 2)
-  actual_count        Decimal?        @db.Decimal(12, 2)
-  created_at          DateTime?       @default(now()) @db.Timestamp(6)
-  updated_at          DateTime?       @default(now()) @db.Timestamp(6)
-  unit_id             String?         @db.VarChar
-  st_daily_count      st_daily_count? @relation(fields: [count_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-}
-
 model st_food_category {
   id                  String         @id @default(dbgenerated("(uuid_generate_v4())::character varying")) @db.VarChar
   name                String?        @db.VarChar(60)
@@ -730,49 +501,6 @@ model st_food_item {
   st_sales_plan_items            st_sales_plan_items[]
 }
 
-model st_ingredient {
-  id                  Int                 @id @default(autoincrement())
-  food_item_id        String?             @db.VarChar
-  qty                 Decimal?            @db.Decimal
-  yield_pct           Decimal?            @db.Decimal
-  goods_id            Int?
-  brand_id            Int
-  order_column        Int?
-  sales_plan_id       String              @db.VarChar
-  supply_plan_id      Int
-  supply_plan_good_id String              @db.VarChar
-  sales_plan_item_id  String              @db.VarChar
-  good_unit_id        String?             @db.VarChar
-  scm_shop_brand      scm_shop_brand      @relation(fields: [brand_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "st_ingredient_brand_id_fkey73")
-  st_food_item        st_food_item?       @relation(fields: [food_item_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "st_ingredient_food_item_id_fkey61")
-  st_sales_plan       st_sales_plan       @relation(fields: [sales_plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "st_ingredient_sales_plan_id_fkey95")
-  st_sales_plan_items st_sales_plan_items @relation(fields: [sales_plan_item_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  scm_supply_plan     scm_supply_plan     @relation(fields: [supply_plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "st_ingredient_supply_plan_id_fkey94")
-
-  @@unique([goods_id, food_item_id, sales_plan_id, supply_plan_id], map: "unique_food_goods_sales_plan")
-  @@unique([sales_plan_item_id, supply_plan_good_id], map: "unique_sales_item_supply_item")
-  @@index([food_item_id, sales_plan_id, supply_plan_id], map: "idx_st_ingredient_food_item_id_sales_plan_id_supply_plan_id")
-}
-
-model st_inventory_single {
-  id                     Int               @id @default(autoincrement())
-  shop_id                Int?
-  start_date             DateTime          @db.Date
-  end_date               DateTime          @db.Date
-  create_time            DateTime?         @default(now()) @db.Timestamp(6)
-  status                 Int               @default(0) @db.SmallInt
-  user_id                Int?
-  last_amount            Decimal?          @default(0) @db.Decimal(12, 6)
-  submit_time            DateTime?         @db.Timestamp(6)
-  day_info_id            String?           @db.VarChar
-  total_inventory_amount Decimal?          @db.Decimal(12, 2)
-  scm_shop_account       scm_shop_account? @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_id4")
-  scm_shop               scm_shop?         @relation(fields: [shop_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "shop_id_fk3")
-  day_info               day_info?         @relation(fields: [day_info_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@unique([shop_id, start_date, end_date], map: "unique_shop_date_range")
-}
-
 model st_kitchen_department {
   id                          String                        @id @default(dbgenerated("(uuid_generate_v4())::character varying")) @db.VarChar
   name                        String?                       @db.VarChar
@@ -793,55 +521,6 @@ model st_kitchen_department_goods {
   st_kitchen_department st_kitchen_department? @relation(fields: [kitchen_department_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "tchen_department_goods_kitchen_department_id_fkey86")
 
   @@unique([goods_id, kitchen_department_id], map: "unique_goods_kitchen")
-}
-
-model st_predict_daily_sales {
-  id                             String                           @id @default(dbgenerated("(uuid_generate_v4())::character varying")) @db.VarChar
-  day_info_id                    String?                          @db.VarChar
-  predict_date                   DateTime?                        @db.Date
-  is_confirmed                   Boolean?
-  predicted_revenue              Decimal?                         @db.Decimal(12, 2)
-  shop_id                        Int?
-  day_info                       day_info?                        @relation(fields: [day_info_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "st_predict_daily_sales_day_info_id_fkey99")
-  scm_shop                       scm_shop?                        @relation(fields: [shop_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "st_predict_daily_sales_shop_id_fkey101")
-  st_predict_daily_sales_details st_predict_daily_sales_details[]
-
-  @@unique([day_info_id, shop_id], map: "unique_day_shop")
-}
-
-model st_predict_daily_sales_details {
-  id                     String                  @id @default(dbgenerated("(uuid_generate_v4())::character varying")) @db.VarChar
-  predict_date           DateTime?               @db.Date
-  day_info_id            String?                 @db.VarChar
-  shop_id                Int?
-  food_item_id           String?                 @db.VarChar
-  price                  Decimal?                @db.Decimal(6, 2)
-  unit_name              String?                 @db.VarChar
-  predicted_qty          Int?
-  actual_qty             Int?
-  appearances            Int?
-  is_predicted           Boolean?
-  predict_daily_sales_id String?                 @db.VarChar
-  item_total             Decimal?                @db.Decimal(12, 2)
-  st_predict_daily_sales st_predict_daily_sales? @relation(fields: [predict_daily_sales_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "_daily_sales_details_predict_daily_sales_id_fkey100")
-  day_info               day_info?               @relation(fields: [day_info_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "st_predict_daily_sales_details_day_info_id_fkey98")
-  st_food_item           st_food_item?           @relation(fields: [food_item_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "st_predict_daily_sales_details_food_item_id_fkey97")
-  scm_shop               scm_shop?               @relation(fields: [shop_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "st_predict_daily_sales_details_shop_id_fkey96")
-
-  @@unique([day_info_id, shop_id, food_item_id], map: "unique_day_shop_food")
-}
-
-model st_predict_order {
-  id                    String    @id @default(dbgenerated("(uuid_generate_v4())::character varying")) @db.VarChar
-  day_info_id           String?   @db.VarChar
-  predict_date          DateTime? @db.Date
-  is_confirmed          Boolean?
-  predicted_order_total Decimal?  @db.Decimal(12, 2)
-  shop_id               Int?
-  day_info              day_info? @relation(fields: [day_info_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "st_predict_order_day_info_id_fkey109")
-  scm_shop              scm_shop? @relation(fields: [shop_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "st_predict_order_shop_id_fkey110")
-
-  @@unique([day_info_id, shop_id], map: "unique_day_info_shop")
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
@@ -884,18 +563,6 @@ model st_sales_plan {
   scm_shop_brand         scm_shop_brand?       @relation(fields: [brandid], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "st_sales_plan_brandid_fkey79")
   scm_supply_plan        scm_supply_plan?      @relation(fields: [supply_plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   st_sales_plan_items    st_sales_plan_items[]
-}
-
-model st_sales_plan_items {
-  id            String          @id @default(dbgenerated("(uuid_generate_v4())::character varying")) @db.VarChar
-  food_item_id  String?         @db.VarChar
-  sales_plan_id String?         @db.VarChar
-  is_enabled    Boolean         @default(true)
-  st_ingredient st_ingredient[]
-  st_food_item  st_food_item?   @relation(fields: [food_item_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "st_sales_plan_items_food_item_id_fkey82")
-  st_sales_plan st_sales_plan?  @relation(fields: [sales_plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "st_sales_plan_items_sales_plan_id_fkey81")
-
-  @@unique([food_item_id, sales_plan_id], map: "unique_plan_item")
 }
 
 model standard_units {
@@ -1085,18 +752,6 @@ model supply_plan_items {
   @@unique([supply_plan_id, item_id], map: "unique_supply_plan_item")
 }
 
-/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
-model user_roles {
-  id               String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  user_id          Int
-  role_id          Int
-  created_at       DateTime?        @default(now()) @db.Timestamp(6)
-  roles            roles            @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  scm_shop_account scm_shop_account @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@unique([user_id, role_id])
-}
-
 model shop_specialty_plan_item_supplier_good {
   id                        String                     @id @default(dbgenerated("(uuid_generate_v4())::character varying")) @db.VarChar(50)
   plan_item_id              String?                    @db.VarChar(50)
@@ -1161,6 +816,351 @@ model supplier_order_return_reasons {
   id                     Int                      @id
   name                   String?                  @db.VarChar
   supplier_order_returns supplier_order_returns[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model base_dimension {
+  id                Int                 @id(map: "food_dimension_pk") @default(autoincrement())
+  code              String?             @db.VarChar
+  name              String              @db.VarChar
+  sort_order        Int?
+  pinyin            String              @db.VarChar
+  is_enable         Boolean             @default(false)
+  is_system         Boolean             @default(false)
+  is_default        Boolean             @default(false)
+  parent_id         Int                 @default(0)
+  delflg            Int                 @default(0)
+  create_dept_id    String?             @db.VarChar
+  create_dept_name  String?             @db.VarChar
+  brand_id          Int?
+  brand_name        String?             @db.VarChar
+  organization_id   Int
+  organization_name String?             @db.VarChar
+  create_time       DateTime?           @db.Timestamp(6)
+  create_id         String?             @db.Uuid
+  modify_time       DateTime?           @db.Timestamp(6)
+  modify_id         String?             @db.Uuid
+  ingredients_goods ingredients_goods[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model base_dimension_ratio {
+  dimension_id_1 Int
+  dimension_id_2 Int
+  ratio          Decimal   @default(0) @db.Decimal(6, 6)
+  create_time    DateTime? @db.Timestamp(6)
+  create_id      String?   @db.Uuid
+
+  @@id([dimension_id_1, dimension_id_2], map: "base_dimension_ratio_pk")
+}
+
+model day_info {
+  id                             String                           @id @db.VarChar
+  is_working                     Int?
+  is_holiday                     Int?
+  day_of_week                    Int?
+  date                           DateTime?                        @db.Date
+  st_daily_count                 st_daily_count[]
+  st_inventory_single            st_inventory_single[]
+  st_predict_daily_sales         st_predict_daily_sales[]
+  st_predict_daily_sales_details st_predict_daily_sales_details[]
+  st_predict_order               st_predict_order[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model equipment_category {
+  id             String           @id @db.VarChar(50)
+  name           String           @db.VarChar(255)
+  is_enable      Boolean          @default(true)
+  shop_equipment shop_equipment[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model equipment_manufacturer {
+  id             String           @id @db.VarChar(50)
+  name           String           @db.VarChar(255)
+  is_enable      Boolean          @default(true)
+  shop_equipment shop_equipment[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model group_organization {
+  id               Int       @id(map: "group_organization_pk")
+  code             String?   @db.VarChar
+  name             String    @db.VarChar
+  short_name       String?   @db.VarChar
+  head_dept_id     Int
+  remark           String?   @db.VarChar
+  url              String?   @db.VarChar
+  delflg           Int       @default(0)
+  create_dept_id   Int?
+  create_dept_name String?   @db.VarChar
+  create_time      DateTime? @db.Timestamp(6)
+  create_id        String?   @db.Uuid
+  modify_time      DateTime? @db.Timestamp(6)
+  modify_id        String?   @db.Uuid
+}
+
+model hello {
+  id      Int     @id @default(autoincrement())
+  message String? @db.VarChar
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model ingredients_goods {
+  id                      Int                     @id(map: "ingredients_goods_pk") @default(autoincrement())
+  code                    String?                 @db.VarChar
+  name                    String                  @db.VarChar
+  base_dimension_id       Int
+  goods_class_id          Int
+  goods_label             Json?
+  s_day                   Int?
+  e_day                   Int?
+  letter_name             String?                 @db.VarChar
+  photo_url               String?                 @db.VarChar
+  external_code           String?                 @db.VarChar
+  remark                  String?                 @db.VarChar
+  delflg                  Int                     @default(0)
+  create_dept_id          Int?
+  create_dept_name        String?                 @db.VarChar
+  create_time             DateTime?               @db.Timestamp(6)
+  create_id               String?                 @db.Uuid
+  modify_time             DateTime?               @db.Timestamp(6)
+  modify_id               String?                 @db.Uuid
+  base_dimension          base_dimension          @relation(fields: [base_dimension_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "ingredients_goods_base_dimension_id_fk")
+  ingredients_goods_class ingredients_goods_class @relation(fields: [goods_class_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "ingredients_goods_ingredients_goods_class_id_fk")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model ingredients_goods_class {
+  id                Int                 @id(map: "ingredients_goods_class_pk") @default(autoincrement())
+  code              String?             @db.VarChar
+  name              String              @db.VarChar
+  parent_id         Int                 @default(0)
+  create_id         String?             @db.Uuid
+  create_time       DateTime?           @db.Timestamp(6)
+  ingredients_goods ingredients_goods[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model ingredients_goods_label {
+  id          Int       @id(map: "ingredients_goods_label_pk") @default(autoincrement())
+  code        String?   @db.VarChar
+  name        String    @db.VarChar
+  create_time DateTime? @db.Timestamp(6)
+  create_id   String?   @db.Uuid
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model ingredients_goods_supplier {
+  id                       Int       @id(map: "ingredients_goods_supplier_pk") @default(autoincrement())
+  ingredients_goods_id     Int
+  supplier_id              Int?
+  supplier_name            String    @db.VarChar
+  supplier_type            Int
+  supplier_goods_id        String?   @db.VarChar
+  supplier_goods_name      String    @db.VarChar
+  supplier_goods_url       String?   @db.VarChar
+  supplier_goods_photo_url String?   @db.VarChar
+  remark                   String?   @db.VarChar
+  brand_id                 Int?
+  brand_name               String?   @db.VarChar
+  organization_id          Int?
+  organization_name        String?   @db.VarChar
+  delflg                   Int?
+  create_dept_id           Int?
+  create_dept_name         String?   @db.VarChar
+  create_time              DateTime? @db.Timestamp(6)
+  create_id                String?   @db.Uuid
+  modify_time              DateTime? @db.Timestamp(6)
+  modify_id                String?   @db.Uuid
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model roles {
+  id         Int          @id @default(autoincrement())
+  role_name  String       @unique @db.VarChar(100)
+  created_at DateTime?    @default(now()) @db.Timestamp(6)
+  user_roles user_roles[]
+}
+
+model scm_brand_account {
+  id               String            @id @default(dbgenerated("(uuid_generate_v4())::character varying")) @db.VarChar
+  brand_id         Int?
+  account_id       Int?
+  scm_shop_account scm_shop_account? @relation(fields: [account_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "scm_brand_account_account_id_fkey60")
+  scm_shop_brand   scm_shop_brand?   @relation(fields: [brand_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "scm_brand_account_brand_id_fkey59")
+
+  @@unique([brand_id, account_id], map: "unique_brand_account")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model shop_equipment {
+  id                     String                 @id @db.VarChar(50)
+  name                   String                 @db.VarChar(100)
+  manufacturer_id        String                 @db.VarChar(50)
+  category_id            String                 @db.VarChar(50)
+  size                   String?                @db.VarChar(100)
+  purchase_date          DateTime?              @db.Timestamp(6)
+  warranty_period        String?                @db.VarChar(500)
+  after_service_phone    String?                @db.VarChar(100)
+  purchase_money         Decimal?               @db.Decimal(10, 2)
+  picture_url            String?                @db.VarChar(255)
+  belong_shop_id         Int?
+  create_user_id         Int?
+  create_time            DateTime?              @default(now()) @db.Timestamp(6)
+  status                 Int?                   @default(1) @db.SmallInt
+  remark                 String?                @db.VarChar(300)
+  qrcode_url             String?                @db.VarChar(200)
+  equipment_category     equipment_category     @relation(fields: [category_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "shop_equipment_equipment_category_fk")
+  equipment_manufacturer equipment_manufacturer @relation(fields: [manufacturer_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "shop_equipment_equipment_manufacturer_fk")
+  scm_shop_account       scm_shop_account?      @relation(fields: [create_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "shop_equipment_scm_shop_account_fk")
+  scm_shop               scm_shop?              @relation(fields: [belong_shop_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "shop_equipment_scm_shop_fk")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model st_daily_count {
+  id                   String                 @id @default(dbgenerated("uuid_generate_v4()")) @db.VarChar
+  shop_id              Int?
+  date_string          String?                @db.VarChar
+  date                 DateTime?              @db.Date
+  inventory_value      Decimal?               @db.Decimal(12, 2)
+  created_at           DateTime?              @default(now()) @db.Timestamp(6)
+  updated_at           DateTime?              @default(now()) @db.Timestamp(6)
+  day_info             day_info?              @relation(fields: [date_string], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  scm_shop             scm_shop?              @relation(fields: [shop_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  st_daily_count_items st_daily_count_items[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model st_daily_count_items {
+  id                  String          @id @default(dbgenerated("uuid_generate_v4()")) @db.VarChar
+  supply_plan_good_id String?         @db.VarChar
+  count_id            String?         @db.VarChar
+  price               Decimal?        @db.Decimal(12, 2)
+  hypo_count          Decimal?        @db.Decimal(12, 2)
+  real_hypo_count     Decimal?        @db.Decimal(12, 2)
+  actual_count        Decimal?        @db.Decimal(12, 2)
+  created_at          DateTime?       @default(now()) @db.Timestamp(6)
+  updated_at          DateTime?       @default(now()) @db.Timestamp(6)
+  unit_id             String?         @db.VarChar
+  st_daily_count      st_daily_count? @relation(fields: [count_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model st_ingredient {
+  id                  Int                 @id @default(autoincrement())
+  food_item_id        String?             @db.VarChar
+  qty                 Decimal?            @db.Decimal
+  yield_pct           Decimal?            @db.Decimal
+  goods_id            Int?
+  brand_id            Int
+  order_column        Int?
+  sales_plan_id       String              @db.VarChar
+  supply_plan_id      Int
+  supply_plan_good_id String              @db.VarChar
+  sales_plan_item_id  String              @db.VarChar
+  good_unit_id        String?             @db.VarChar
+  scm_shop_brand      scm_shop_brand      @relation(fields: [brand_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "st_ingredient_brand_id_fkey73")
+  st_food_item        st_food_item?       @relation(fields: [food_item_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "st_ingredient_food_item_id_fkey61")
+  st_sales_plan       st_sales_plan       @relation(fields: [sales_plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "st_ingredient_sales_plan_id_fkey95")
+  st_sales_plan_items st_sales_plan_items @relation(fields: [sales_plan_item_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  scm_supply_plan     scm_supply_plan     @relation(fields: [supply_plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "st_ingredient_supply_plan_id_fkey94")
+
+  @@unique([goods_id, food_item_id, sales_plan_id, supply_plan_id], map: "unique_food_goods_sales_plan")
+  @@unique([sales_plan_item_id, supply_plan_good_id], map: "unique_sales_item_supply_item")
+  @@index([food_item_id, sales_plan_id, supply_plan_id], map: "idx_st_ingredient_food_item_id_sales_plan_id_supply_plan_id")
+}
+
+model st_inventory_single {
+  id                     Int               @id @default(autoincrement())
+  shop_id                Int?
+  start_date             DateTime          @db.Date
+  end_date               DateTime          @db.Date
+  create_time            DateTime?         @default(now()) @db.Timestamp(6)
+  status                 Int               @default(0) @db.SmallInt
+  user_id                Int?
+  last_amount            Decimal?          @default(0) @db.Decimal(12, 6)
+  submit_time            DateTime?         @db.Timestamp(6)
+  day_info_id            String?           @db.VarChar
+  total_inventory_amount Decimal?          @db.Decimal(12, 2)
+  scm_shop_account       scm_shop_account? @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_id4")
+  scm_shop               scm_shop?         @relation(fields: [shop_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "shop_id_fk3")
+  day_info               day_info?         @relation(fields: [day_info_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([shop_id, start_date, end_date], map: "unique_shop_date_range")
+}
+
+model st_predict_daily_sales {
+  id                             String                           @id @default(dbgenerated("(uuid_generate_v4())::character varying")) @db.VarChar
+  day_info_id                    String?                          @db.VarChar
+  predict_date                   DateTime?                        @db.Date
+  is_confirmed                   Boolean?
+  predicted_revenue              Decimal?                         @db.Decimal(12, 2)
+  shop_id                        Int?
+  day_info                       day_info?                        @relation(fields: [day_info_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "st_predict_daily_sales_day_info_id_fkey99")
+  scm_shop                       scm_shop?                        @relation(fields: [shop_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "st_predict_daily_sales_shop_id_fkey101")
+  st_predict_daily_sales_details st_predict_daily_sales_details[]
+
+  @@unique([day_info_id, shop_id], map: "unique_day_shop")
+}
+
+model st_predict_daily_sales_details {
+  id                     String                  @id @default(dbgenerated("(uuid_generate_v4())::character varying")) @db.VarChar
+  predict_date           DateTime?               @db.Date
+  day_info_id            String?                 @db.VarChar
+  shop_id                Int?
+  food_item_id           String?                 @db.VarChar
+  price                  Decimal?                @db.Decimal(6, 2)
+  unit_name              String?                 @db.VarChar
+  predicted_qty          Int?
+  actual_qty             Int?
+  appearances            Int?
+  is_predicted           Boolean?
+  predict_daily_sales_id String?                 @db.VarChar
+  item_total             Decimal?                @db.Decimal(12, 2)
+  st_predict_daily_sales st_predict_daily_sales? @relation(fields: [predict_daily_sales_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "_daily_sales_details_predict_daily_sales_id_fkey100")
+  day_info               day_info?               @relation(fields: [day_info_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "st_predict_daily_sales_details_day_info_id_fkey98")
+  st_food_item           st_food_item?           @relation(fields: [food_item_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "st_predict_daily_sales_details_food_item_id_fkey97")
+  scm_shop               scm_shop?               @relation(fields: [shop_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "st_predict_daily_sales_details_shop_id_fkey96")
+
+  @@unique([day_info_id, shop_id, food_item_id], map: "unique_day_shop_food")
+}
+
+model st_predict_order {
+  id                    String    @id @default(dbgenerated("(uuid_generate_v4())::character varying")) @db.VarChar
+  day_info_id           String?   @db.VarChar
+  predict_date          DateTime? @db.Date
+  is_confirmed          Boolean?
+  predicted_order_total Decimal?  @db.Decimal(12, 2)
+  shop_id               Int?
+  day_info              day_info? @relation(fields: [day_info_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "st_predict_order_day_info_id_fkey109")
+  scm_shop              scm_shop? @relation(fields: [shop_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "st_predict_order_shop_id_fkey110")
+
+  @@unique([day_info_id, shop_id], map: "unique_day_info_shop")
+}
+
+model st_sales_plan_items {
+  id            String          @id @default(dbgenerated("(uuid_generate_v4())::character varying")) @db.VarChar
+  food_item_id  String?         @db.VarChar
+  sales_plan_id String?         @db.VarChar
+  is_enabled    Boolean         @default(true)
+  st_ingredient st_ingredient[]
+  st_food_item  st_food_item?   @relation(fields: [food_item_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "st_sales_plan_items_food_item_id_fkey82")
+  st_sales_plan st_sales_plan?  @relation(fields: [sales_plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "st_sales_plan_items_sales_plan_id_fkey81")
+
+  @@unique([food_item_id, sales_plan_id], map: "unique_plan_item")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model user_roles {
+  id               String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id          Int
+  role_id          Int
+  created_at       DateTime?        @default(now()) @db.Timestamp(6)
+  roles            roles            @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  scm_shop_account scm_shop_account @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([user_id, role_id])
 }
 
 enum pricing_strategy_type {

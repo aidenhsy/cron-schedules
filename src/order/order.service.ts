@@ -19,153 +19,109 @@ export class OrderService {
   })
   async finishOrder(msg: { id: string; aggregateId: string; payload: any }) {
     const { id, aggregateId, payload } = msg;
+    this.logger.log(`Order ${aggregateId} delivered`);
 
-    // Idempotency check
-    const existingProcessedMessage =
-      await this.databaseService.order.procurement_orders.findFirst({
-        where: { id: payload.id, status: 4 },
+    const order =
+      await this.databaseService.procurement.supplier_orders.findUnique({
+        where: {
+          id: aggregateId,
+        },
+        include: {
+          supplier_order_details: true,
+        },
       });
-    if (existingProcessedMessage) {
-      this.logger.warn(`Order ${payload.id} already processed, skipping`);
+
+    if (!order) {
+      this.logger.error(`Order ${aggregateId} not found`);
       return;
     }
-
-    const procurementDetailsCount =
-      await this.databaseService.procurement.supplier_order_details.count({
-        where: { order_id: aggregateId },
+    const orderDetails =
+      await this.databaseService.order.procurement_order_details.findMany({
+        where: {
+          procurement_orders: {
+            client_order_id: order.id,
+          },
+        },
+        select: {
+          id: true,
+          deliver_qty: true,
+          reference_id: true,
+        },
       });
-
-    const basicDetailsCount =
-      await this.databaseService.basic.scm_order_details.count({
-        where: { reference_order_id: aggregateId },
+    const scmDetails =
+      await this.databaseService.basic.scm_order_details.findMany({
+        where: {
+          reference_order_id: order.id,
+        },
+        select: {
+          reference_id: true,
+          delivery_qty: true,
+        },
       });
-
     if (
-      payload.procurement_order_details.length === basicDetailsCount &&
-      payload.procurement_order_details.length === procurementDetailsCount
+      orderDetails.length !== order.supplier_order_details.length ||
+      scmDetails.length !== order.supplier_order_details.length
     ) {
-      let allSucceeded = true; // <--- track if all updates succeeded
-      let arrivalTime: Date | null = null; // <--- capture arrival_time for sent_time
-
-      for (const detail of payload.procurement_order_details) {
-        const basicDetail =
-          await this.databaseService.basic.scm_order_details.findFirst({
-            where: {
-              reference_id: detail.reference_id,
-              reference_order_id: aggregateId,
-            },
-            select: {
-              delivery_qty: true,
-              scm_order: {
-                select: {
-                  arrival_time: true,
-                },
-              },
-            },
-          });
-        if (!basicDetail) {
-          this.logger.error('Basic detail not found', { detail });
-          allSucceeded = false;
-          continue; // <--- skip this item, don't abort loop
-        }
-
-        // Capture arrival_time from the first successful basicDetail
-        if (!arrivalTime && basicDetail.scm_order?.arrival_time) {
-          arrivalTime = basicDetail.scm_order.arrival_time;
-        }
-
-        const imSupplierOrderDetail =
-          await this.databaseService.procurement.supplier_order_details.findFirst(
-            {
-              where: {
-                order_id: aggregateId,
-                supplier_reference_id: detail.supplier_reference_id,
-              },
-            },
-          );
-        if (!imSupplierOrderDetail) {
-          this.logger.error('IM procurement order detail not found', {
-            detail,
-          });
-          allSucceeded = false;
-          continue; // <--- skip this item
-        }
-
-        try {
-          await this.databaseService.procurement.supplier_order_details.update({
-            where: { id: imSupplierOrderDetail.id },
-            data: {
-              actual_delivery_qty: basicDetail.delivery_qty,
-              confirm_delivery_qty: basicDetail.delivery_qty,
-              final_qty: basicDetail.delivery_qty,
-              is_locked: true,
-            },
-          });
-        } catch (error: any) {
-          if (
-            error.message &&
-            error.message.includes('is locked; UPDATE is not allowed')
-          ) {
-            this.logger.warn(
-              `Skipping locked supplier_order_details record: ${imSupplierOrderDetail.id}`,
-            );
-            continue;
-          }
-          allSucceeded = false;
-          continue;
-        }
-
-        try {
-          await this.databaseService.order.procurement_order_details.update({
-            where: { id: detail.id },
-            data: {
-              deliver_qty: basicDetail.delivery_qty,
-              customer_receive_qty: basicDetail.delivery_qty,
-              final_qty: basicDetail.delivery_qty,
-              is_locked: true,
-            },
-          });
-        } catch (error: any) {
-          if (
-            error.message &&
-            error.message.includes('is locked; UPDATE is not allowed')
-          ) {
-            this.logger.warn(
-              `Skipping locked procurement_order_details record: ${detail.id}`,
-            );
-            continue;
-          }
-          allSucceeded = false;
-          continue;
-        }
-      }
-
-      // ✅ Only close orders if ALL details succeeded
-      if (allSucceeded) {
-        await this.databaseService.procurement.supplier_orders.update({
-          where: { id: aggregateId },
-          data: {
-            status: 4,
-            sent_time: arrivalTime,
-            receive_time: arrivalTime,
-          },
-        });
-        await this.databaseService.order.procurement_orders.update({
-          where: { id: payload.id },
-          data: {
-            status: 4,
-            sent_time: arrivalTime,
-            customer_receive_time: arrivalTime,
-          },
-        });
-      } else {
-        this.logger.error(
-          `Not all details succeeded for order ${payload.id}, status not set to 4`,
-        );
-      }
-    } else {
-      this.logger.error('Order details count mismatch', { aggregateId });
+      this.logger.error(`Order ${aggregateId} has mismatched details`, {
+        orderDetails: orderDetails.length,
+        scmDetails: scmDetails.length,
+        supplierDetails: order.supplier_order_details.length,
+      });
+      return;
     }
+    const orderMap = new Map<string, any>(
+      orderDetails.map((o) => [o.reference_id, o]) as [string, any][],
+    );
+    const scmMap = new Map<string, any>(
+      scmDetails.map((o) => [o.reference_id, o]) as [string, any][],
+    );
+
+    for (const detail of order.supplier_order_details) {
+      const orderDetail = orderMap.get(detail.supplier_reference_id);
+      const scmDetail = scmMap.get(detail.supplier_reference_id);
+
+      if (
+        Number(detail.confirm_delivery_qty) ===
+          Number(orderDetail.deliver_qty) &&
+        Number(detail.confirm_delivery_qty) ===
+          Number(scmDetail.delivery_qty) &&
+        Number(detail.actual_delivery_qty) === Number(scmDetail.delivery_qty)
+      ) {
+        await this.databaseService.order.procurement_order_details.update({
+          where: {
+            id: orderDetail.id,
+          },
+          data: {
+            final_qty: detail.confirm_delivery_qty,
+          },
+        });
+        await this.databaseService.procurement.supplier_order_details.update({
+          where: {
+            id: detail.id,
+          },
+          data: {
+            final_qty: detail.confirm_delivery_qty,
+          },
+        });
+      }
+    }
+
+    await this.databaseService.order.procurement_orders.update({
+      where: {
+        client_order_id: order.id,
+      },
+      data: {
+        status: 4,
+      },
+    });
+    await this.databaseService.procurement.supplier_orders.update({
+      where: {
+        id: order.id,
+      },
+      data: {
+        status: 4,
+      },
+    });
 
     await this.rabbitmqService.emitProcessed('order.delivered', {
       id,

@@ -31,7 +31,8 @@
     "dev:scmbasic": "prisma db pull --schema=prisma/dev-scmbasic.prisma && prisma generate --schema=prisma/dev-scmbasic.prisma",
     "dev:scmorder": "prisma db pull --schema=prisma/dev-scmorder.prisma && prisma generate --schema=prisma/dev-scmorder.prisma",
     "dev:scmpricing": "prisma db pull --schema=prisma/dev-scmpricing.prisma && prisma generate --schema=prisma/dev-scmpricing.prisma",
-    "dev:all": "npm run dev:procurement && npm run dev:imbasic && npm run dev:inventory && npm run dev:scmbasic && npm run dev:scmorder && npm run dev:scmpricing"
+    "dev:orderService": "prisma db pull --schema=prisma/dev-order-service.prisma && prisma generate --schema=prisma/dev-order-service.prisma",
+    "dev:all": "npm run dev:procurement && npm run dev:imbasic && npm run dev:inventory && npm run dev:scmbasic && npm run dev:scmorder && npm run dev:scmpricing && npm run dev:orderService"
   },
   "dependencies": {
     "@golevelup/nestjs-rabbitmq": "^6.0.2",
@@ -44,7 +45,9 @@
     "@prisma/client": "^6.12.0",
     "@saihu/common": "^1.1.19",
     "axios": "^1.11.0",
+    "dayjs": "^1.11.14",
     "json-bigint": "^1.0.0",
+    "p-limit": "^7.1.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },

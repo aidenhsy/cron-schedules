@@ -167,11 +167,19 @@ export class ChecksService {
 
     const orderSummaries: OrderSummary[] = [];
 
+    // choose which basic column is canonical for this check
+    const useBasicDeliveryQty = false; // false => use deliver_goods_qty; true => delivery_qty
+
     const toNum = (x: any) =>
-      x == null ? null : typeof x === 'number' ? x : Number(x);
+      x == null || x === '' ? 0 : typeof x === 'number' ? x : Number(x);
+
+    const eq = (a: number, b: number, eps = 1e-9) => Math.abs(a - b) < eps;
+
+    const normKey = (s: string) => (s ?? '').trim();
+
+    const debug = false; // set true to see triplets that mismatch
 
     while (hasMoreOrders) {
-      // 1) Load a page of orders + details (read-only)
       const orders =
         await this.databaseService.order.procurement_orders.findMany({
           select: {
@@ -182,12 +190,10 @@ export class ChecksService {
               select: { reference_id: true, deliver_qty: true },
             },
           },
-          where: {
-            status: { in: [3, 4, 5, 20] },
-          },
+          where: { status: { in: [3, 4, 5, 20] } },
           take: batchSize,
           skip,
-          orderBy: { id: 'asc' }, // stable pagination
+          orderBy: { id: 'asc' },
         });
 
       if (orders.length === 0) break;
@@ -195,7 +201,6 @@ export class ChecksService {
 
       const clientOrderIds = orders.map((o) => o.client_order_id);
 
-      // 2) Bulk fetch procurement details for these orders
       const procurementOrders =
         await this.databaseService.procurement.supplier_orders.findMany({
           where: { id: { in: clientOrderIds } },
@@ -217,14 +222,14 @@ export class ChecksService {
       for (const po of procurementOrders) {
         const byRef = new Map<string, { actual_delivery_qty: any }>();
         for (const det of po.supplier_order_details) {
-          byRef.set(det.supplier_reference_id, {
+          byRef.set(normKey(det.supplier_reference_id), {
             actual_delivery_qty: det.actual_delivery_qty,
           });
         }
         procurementDetailsByOrder.set(po.id, byRef);
       }
 
-      // 3) Bulk fetch "basic" rows (formerly scm) once per batch
+      // fetch both columns; pick one centrally below
       const basicRows =
         await this.databaseService.basic.scm_order_details.findMany({
           where: { reference_order_id: { in: clientOrderIds } },
@@ -232,17 +237,28 @@ export class ChecksService {
             reference_order_id: true,
             reference_id: true,
             deliver_goods_qty: true,
+            delivery_qty: true,
           },
         });
 
-      const basicByPair = new Map<string, { deliver_goods_qty: any }>();
+      const basicByPair = new Map<
+        string,
+        { deliver_goods_qty: any; delivery_qty: any }
+      >();
       for (const b of basicRows) {
-        basicByPair.set(`${b.reference_order_id}|${b.reference_id}`, {
+        const key = `${normKey(b.reference_order_id ?? '')}|${normKey(
+          b.reference_id ?? '',
+        )}`;
+        // optional: detect duplicates and log
+        if (basicByPair.has(key) && debug) {
+          this.logger.warn(`Duplicate basic row for ${key}`);
+        }
+        basicByPair.set(key, {
           deliver_goods_qty: b.deliver_goods_qty,
+          delivery_qty: b.delivery_qty,
         });
       }
 
-      // 4) Compare per order (no writes)
       for (const order of orders) {
         let basicVsOrder = 0;
         let procurementVsBasic = 0;
@@ -252,30 +268,61 @@ export class ChecksService {
           procurementDetailsByOrder.get(order.client_order_id) ?? new Map();
 
         for (const od of order.procurement_order_details) {
-          const pDetail = pDetails.get(od.reference_id);
+          const refKey = normKey(od.reference_id ?? '');
+          const pDetail = pDetails.get(refKey);
           if (!pDetail) continue;
 
           const basic = basicByPair.get(
-            `${order.client_order_id}|${od.reference_id}`,
+            `${normKey(order.client_order_id)}|${refKey}`,
           );
 
           const orderQty = toNum(od.deliver_qty);
           const procQty = toNum(pDetail.actual_delivery_qty);
 
           if (basic) {
-            const basicQty = toNum(basic.deliver_goods_qty);
-            if (basicQty !== orderQty) basicVsOrder++;
-            if (procQty !== basicQty) procurementVsBasic++;
+            const basicQty = useBasicDeliveryQty
+              ? toNum((basic as any).delivery_qty)
+              : toNum((basic as any).deliver_goods_qty);
+
+            if (!eq(basicQty, orderQty)) {
+              basicVsOrder++;
+              this.logger.warn(
+                `[basic vs order] order_id=${order.client_order_id}, ref=${refKey}, basic=${basicQty}, order=${orderQty}`,
+              );
+            }
+
+            if (!eq(procQty, basicQty)) {
+              procurementVsBasic++;
+              this.logger.warn(
+                `[proc vs basic] order_id=${order.client_order_id}, ref=${refKey}, proc=${procQty}, basic=${basicQty}`,
+              );
+            }
+
+            // 👇 optional consolidated log showing all three values for this reference
+            if (!eq(orderQty, basicQty) || !eq(procQty, basicQty)) {
+              console.log(
+                `Delivery difference: order_id=${order.client_order_id}, ref=${refKey}, order=${orderQty}, basic=${basicQty}, procurement=${procQty}`,
+              );
+            }
           } else {
-            // No basic row → compare procurement vs order
-            if (procQty !== orderQty) procurementVsOrder++;
+            // no basic → compare procurement vs order only
+            if (!eq(procQty, orderQty)) {
+              procurementVsOrder++;
+              this.logger.warn(
+                `[proc vs order] order_id=${order.client_order_id}, ref=${refKey}, proc=${procQty}, order=${orderQty}`,
+              );
+
+              console.log(
+                `Delivery difference (no basic): order_id=${order.client_order_id}, ref=${refKey}, order=${orderQty}, procurement=${procQty}`,
+              );
+            }
           }
         }
 
         if (basicVsOrder || procurementVsBasic || procurementVsOrder) {
           orderSummaries.push({
             client_order_id: order.client_order_id,
-            type: order.type?.toString(),
+            type: order.type?.toString() ?? null,
             sent_time: order.sent_time ?? null,
             basic_vs_order: basicVsOrder,
             procurement_vs_basic: procurementVsBasic,
@@ -284,12 +331,11 @@ export class ChecksService {
         }
       }
 
-      skip += batchSize; // next page
+      skip += batchSize;
     }
 
     this.logger.log('Checking delivery qty done');
 
-    // 5) Compact, easy-to-scan report lines
     const reportLines = orderSummaries.map((o) => {
       const sent = o.sent_time
         ? o.sent_time.toISOString().split('T')[0]
@@ -314,9 +360,57 @@ export class ChecksService {
           0,
         ),
       },
-      orders: orderSummaries, // structured data if you need to export
+      orders: orderSummaries,
     };
   }
+
+  // async dailyReport() {
+  //   const { missingScmOrders, missingProcurementOrders } =
+  //     await this.checkDifferentOrders();
+
+  //   const { summary, orders } = await this.checkDeliveryQty();
+
+  //   // summary section
+  //   const summarySection = `
+  // 📊 Daily Report
+
+  // Missing Orders:
+  //   • SCM orders: ${missingScmOrders.length}
+  //   • Procurement orders: ${missingProcurementOrders.length}
+
+  // Delivery Qty Mismatch:
+  //   • Orders with mismatches: ${summary.total_orders_with_diffs}
+  //   • basic-vs-order: ${summary.total_basic_vs_order}
+  //   • procurement-vs-basic: ${summary.total_procurement_vs_basic}
+  //   • procurement-vs-order: ${summary.total_procurement_vs_order}
+  // `.trim();
+
+  //   // per-order section (only client_order_id and counts)
+  //   const ordersSection =
+  //     orders.length > 0
+  //       ? `\n\nOrders with mismatches:\n` +
+  //         orders
+  //           .map(
+  //             (o) =>
+  //               `- ${o.client_order_id}\n` +
+  //               `    basic-vs-order: ${o.basic_vs_order}, procurement-vs-basic: ${o.procurement_vs_basic}, procurement-vs-order: ${o.procurement_vs_order}`,
+  //           )
+  //           .join('\n\n')
+  //       : `\n\nNo mismatches found 🎉`;
+
+  //   const body = summarySection + ordersSection;
+
+  //   await this.mailService.sendMail({
+  //     to: 'aiden@shaihukeji.com',
+  //     subject: 'Daily Report',
+  //     text: body,
+  //     attachments: [],
+  //   });
+
+  //   return {
+  //     message: `Daily report sent to aiden@shaihukeji.com`,
+  //   };
+  // }
 
   async orderSync() {
     this.logger.log('Order sync');
@@ -445,54 +539,6 @@ export class ChecksService {
       finalMismatches: [...mismatchedFinalOrderIds],
     };
   }
-
-  // async dailyReport() {
-  //   const { missingScmOrders, missingProcurementOrders } =
-  //     await this.checkDifferentOrders();
-
-  //   const { summary, orders } = await this.checkDeliveryQty();
-
-  //   // summary section
-  //   const summarySection = `
-  // 📊 Daily Report
-
-  // Missing Orders:
-  //   • SCM orders: ${missingScmOrders.length}
-  //   • Procurement orders: ${missingProcurementOrders.length}
-
-  // Delivery Qty Mismatch:
-  //   • Orders with mismatches: ${summary.total_orders_with_diffs}
-  //   • basic-vs-order: ${summary.total_basic_vs_order}
-  //   • procurement-vs-basic: ${summary.total_procurement_vs_basic}
-  //   • procurement-vs-order: ${summary.total_procurement_vs_order}
-  // `.trim();
-
-  //   // per-order section (only client_order_id and counts)
-  //   const ordersSection =
-  //     orders.length > 0
-  //       ? `\n\nOrders with mismatches:\n` +
-  //         orders
-  //           .map(
-  //             (o) =>
-  //               `- ${o.client_order_id}\n` +
-  //               `    basic-vs-order: ${o.basic_vs_order}, procurement-vs-basic: ${o.procurement_vs_basic}, procurement-vs-order: ${o.procurement_vs_order}`,
-  //           )
-  //           .join('\n\n')
-  //       : `\n\nNo mismatches found 🎉`;
-
-  //   const body = summarySection + ordersSection;
-
-  //   await this.mailService.sendMail({
-  //     to: 'aiden@shaihukeji.com',
-  //     subject: 'Daily Report',
-  //     text: body,
-  //     attachments: [],
-  //   });
-
-  //   return {
-  //     message: `Daily report sent to aiden@shaihukeji.com`,
-  //   };
-  // }
 
   async dailyReport() {
     const { missingScmOrders, missingProcurementOrders } =
