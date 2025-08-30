@@ -917,9 +917,9 @@ model st_settle_details {
   payway_id        String?         @db.VarChar
   modify_time      String?         @db.VarChar
   payway_name      String?         @db.VarChar(255)
-  pay_money        Decimal?        @db.Decimal(10, 4)
+  pay_money        Decimal?        @db.Decimal(13, 4)
   payway_remark    String?         @db.VarChar(255)
-  income_money     Decimal?        @db.Decimal(10, 4)
+  income_money     Decimal?        @db.Decimal(13, 4)
   delflg           Int?
   settle_state     Int?
   pw_id            String?         @db.VarChar(50)
@@ -929,7 +929,7 @@ model st_settle_details {
   card_no          String?         @db.VarChar(255)
   consumer_code    String?         @db.VarChar(255)
   crm_mobile       String?         @db.VarChar(255)
-  not_income_money Decimal?        @db.Decimal(10, 4)
+  not_income_money Decimal?        @db.Decimal(13, 4)
   st_daily_sales   st_daily_sales? @relation(fields: [daily_sales_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "st_settle_details_daily_sales_id_fkey78")
 }
 
