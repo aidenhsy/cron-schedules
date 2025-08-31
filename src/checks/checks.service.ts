@@ -579,6 +579,6 @@ export class ChecksService {
       attachments: [],
     });
 
-    return { message: `Daily report sent to aiden@shaihukeji.com` };
+    return { body };
   }
 }
