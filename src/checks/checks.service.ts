@@ -572,6 +572,8 @@ export class ChecksService {
 
     const body = summarySection + detailsSection;
 
+    console.log(summarySection, '\n', body);
+
     await this.mailService.sendMail({
       to: 'aiden@shaihukeji.com',
       subject: 'Daily Report',
@@ -579,6 +581,6 @@ export class ChecksService {
       attachments: [],
     });
 
-    return { body };
+    return { message: `Daily report sent to aiden@shaihukeji.com` };
   }
 }
