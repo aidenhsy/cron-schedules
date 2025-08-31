@@ -517,6 +517,15 @@ export class ChecksService {
 
           if (!allEqual3(bdg, pad, od)) {
             mismatchedDeliveryOrderIds.add(order.client_order_id);
+            console.log(`🔍 DELIVERY MISMATCH:`, {
+              order_id: order.client_order_id,
+              order_status: order.status,
+              reference_id: oDetail.reference_id,
+              basic_deliver_goods_qty: bdg,
+              procurement_actual_delivery_qty: pad,
+              order_deliver_qty: od,
+              key: key,
+            });
           }
 
           // Final qty triple (only if order.status in {4,5}):
@@ -526,6 +535,15 @@ export class ChecksService {
             const bf = num(bDetail?.delivery_qty);
             if (!allEqual3(pf, of, bf)) {
               mismatchedFinalOrderIds.add(order.client_order_id);
+              console.log(`🔍 FINAL QTY MISMATCH:`, {
+                order_id: order.client_order_id,
+                order_status: order.status,
+                reference_id: oDetail.reference_id,
+                procurement_final_qty: pf,
+                order_final_qty: of,
+                basic_delivery_qty: bf,
+                key: key,
+              });
             }
           }
         }
