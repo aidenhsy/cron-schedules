@@ -1,5 +1,5 @@
 {
-  "name": "scheduled-checks",
+  "name": "schedule",
   "version": "0.0.1",
   "description": "",
   "author": "",
@@ -45,6 +45,7 @@
     "@prisma/client": "^6.12.0",
     "@saihu/common": "^1.1.19",
     "axios": "^1.11.0",
+    "cheerio": "^1.1.2",
     "dayjs": "^1.11.14",
     "json-bigint": "^1.0.0",
     "p-limit": "^7.1.0",
