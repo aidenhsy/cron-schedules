@@ -12,17 +12,8 @@
   # 3️⃣ Copy the rest of the code
   COPY . .
   
-  # 4️⃣ Generate Prisma clients
-  RUN npx prisma generate --schema=prisma/scmorder.prisma && \
-      npx prisma generate --schema=prisma/imbasic.prisma && \
-      npx prisma generate --schema=prisma/scmbasic.prisma && \
-      npx prisma generate --schema=prisma/procurement.prisma && \
-      npx prisma generate --schema=prisma/scmpricing.prisma && \
-      npx prisma generate --schema=prisma/inventory.prisma && \
-      npm run dev:all
-  
   # 5️⃣ Build app
   RUN npm run build
   
-  EXPOSE 3030
+  EXPOSE 3038
   CMD ["npm", "start"]
